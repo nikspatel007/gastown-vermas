@@ -11,23 +11,31 @@ import (
 //go:embed config/*.json
 var configFS embed.FS
 
-// RoleType indicates whether a role is autonomous or interactive.
+// RoleType indicates the type of role and which settings template to use.
 type RoleType string
 
 const (
-	// Autonomous roles (polecat, witness, refinery) need mail in SessionStart
+	// Autonomous roles (polecat, witness) need mail in SessionStart
 	// because they may be triggered externally without user input.
+	// These roles run verification check on startup.
 	Autonomous RoleType = "autonomous"
 
 	// Interactive roles (mayor, crew) wait for user input, so UserPromptSubmit
-	// handles mail injection.
+	// handles mail injection. These roles also run verification check on startup.
 	Interactive RoleType = "interactive"
+
+	// Refinery role has special verification requirements - it runs
+	// verification gate on SessionStart AND before any Bash tool use
+	// to enforce mandatory verification before merge operations.
+	Refinery RoleType = "refinery"
 )
 
 // RoleTypeFor returns the RoleType for a given role name.
 func RoleTypeFor(role string) RoleType {
 	switch role {
-	case "polecat", "witness", "refinery":
+	case "refinery":
+		return Refinery
+	case "polecat", "witness":
 		return Autonomous
 	default:
 		return Interactive
@@ -52,8 +60,12 @@ func EnsureSettings(workDir string, roleType RoleType) error {
 	}
 
 	// Select template based on role type
+	// All templates include verification check in SessionStart
+	// Refinery has additional verification gate before Bash tool use
 	var templateName string
 	switch roleType {
+	case Refinery:
+		templateName = "config/settings-refinery.json"
 	case Autonomous:
 		templateName = "config/settings-autonomous.json"
 	default:
