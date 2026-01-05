@@ -1,0 +1,225 @@
+description = """
+Work formula with independent verification gate before merge.
+
+This formula extends the standard polecat work lifecycle with a verification
+step that uses an alternate AI model (Codex/OpenCode) to review the work
+before it enters the merge queue.
+
+## Verification Layer
+
+The verification step uses a different AI runtime to catch issues that the
+original model might have missed. This provides:
+
+1. Independent review by a second model
+2. Higher confidence in code quality
+3. Automatic escalation for uncertain cases
+
+## Verification Outcomes
+
+| Verdict | Action |
+|---------|--------|
+| PASS | Work proceeds to merge queue |
+| FAIL | Work sent back to polecat with issues |
+| NEEDS_HUMAN | Escalated to Mayor for human review |
+
+## Variables
+
+| Variable | Source | Description |
+|----------|--------|-------------|
+| issue | hook_bead | The issue ID assigned to this polecat |
+
+## When to Use This Formula
+
+Use the verified formula when:
+- Working on critical code paths
+- Making security-sensitive changes
+- Implementing complex logic
+- When extra confidence is required before merge"""
+
+formula = "verified"
+version = 1
+
+[[steps]]
+id = "load-context"
+title = "Load context and verify assignment"
+description = """
+Initialize your session and understand your assignment.
+
+**1. Prime your environment:**
+```bash
+gt prime                    # Load role context
+bd prime                    # Load beads context
+```
+
+**2. Check your hook:**
+```bash
+gt hook                     # Shows your pinned molecule and hook_bead
+```
+
+**3. Read the assigned issue:**
+```bash
+bd show {{issue}}           # Full issue details
+```
+
+**4. Check inbox for context:**
+```bash
+gt mail inbox
+```
+
+**5. Verify you understand the requirements and can proceed.**
+
+If blocked or unclear, mail Witness:
+```bash
+gt mail send <rig>/witness -s "HELP: Unclear requirements" -m "Issue: {{issue}}
+Question: <what you need clarified>"
+```
+
+**Exit criteria:** You understand the work and can begin implementation."""
+
+[[steps]]
+id = "branch-setup"
+title = "Set up working branch"
+needs = ["load-context"]
+description = """
+Ensure you're on a clean feature branch ready for work.
+
+```bash
+git status
+git branch --show-current
+git checkout -b polecat/<name>  # If not on feature branch
+git fetch origin
+git rebase origin/main
+```
+
+**Exit criteria:** Clean feature branch, rebased on latest main."""
+
+[[steps]]
+id = "implement"
+title = "Implement the solution"
+needs = ["branch-setup"]
+description = """
+Do the actual implementation work.
+
+**Working principles:**
+- Follow existing codebase conventions
+- Make atomic, focused commits
+- Keep changes scoped to the assigned issue
+
+**Commit frequently:**
+```bash
+git add <files>
+git commit -m "<type>: <description> ({{issue}})"
+```
+
+**Exit criteria:** Implementation complete, all changes committed."""
+
+[[steps]]
+id = "test"
+title = "Run tests and verify"
+needs = ["implement"]
+description = """
+Verify your changes don't break anything.
+
+```bash
+go test ./...               # Run full test suite
+golangci-lint run ./...     # Run linter
+go build ./...              # Build check
+```
+
+**ALL TESTS MUST PASS.** Do not proceed with failures.
+
+If tests fail, fix them before continuing.
+
+**Exit criteria:** All tests pass, code is clean."""
+
+[[steps]]
+id = "self-review"
+title = "Self-review changes"
+needs = ["test"]
+description = """
+Review your own changes before verification.
+
+```bash
+git diff origin/main...HEAD     # All changes vs main
+git log --oneline origin/main..HEAD  # All commits
+```
+
+Check for:
+- Bugs, off-by-one errors, null handling
+- Security issues (injection, auth bypass)
+- Code quality and organization
+- Missing error handling
+
+**Exit criteria:** Changes are clean and ready for verification."""
+
+[[steps]]
+id = "verify"
+title = "Independent verification by alternate agent"
+needs = ["self-review"]
+type = "verification"
+description = """
+Submit work for independent verification using an alternate AI model.
+
+This step triggers the Auditor agent which uses a different runtime
+(Codex/OpenCode) to review your work before it enters the merge queue.
+
+**1. Trigger verification:**
+```bash
+gt verify run {{issue}}
+```
+
+This will:
+- Send your work to the Auditor agent
+- The Auditor uses Codex/OpenCode for independent review
+- Returns PASS, FAIL, or NEEDS_HUMAN verdict
+
+**2. Handle the verdict:**
+
+| Verdict | Action |
+|---------|--------|
+| PASS | Continue to submit step |
+| FAIL | Address the issues found, return to implement |
+| NEEDS_HUMAN | Wait for Mayor/human review |
+
+**3. Check verification status:**
+```bash
+gt verify status
+```
+
+**Exit criteria:** Verification passed (PASS verdict)."""
+
+[[steps]]
+id = "cleanup"
+title = "Clean up workspace"
+needs = ["verify"]
+description = """
+Ensure workspace is pristine before submission.
+
+```bash
+git status                  # Should show "working tree clean"
+git stash list              # Should be empty
+git push -u origin $(git branch --show-current)
+```
+
+**Exit criteria:** Branch pushed, workspace clean."""
+
+[[steps]]
+id = "submit"
+title = "Submit to merge queue"
+needs = ["cleanup"]
+description = """
+Submit your verified work to the merge queue.
+
+```bash
+gt done
+```
+
+This creates an MR bead with verification status attached.
+The Refinery will see that verification passed and proceed with merge.
+
+**Exit criteria:** MR submitted, polecat recyclable."""
+
+[vars]
+[vars.issue]
+description = "The issue ID assigned to this polecat"
+required = true
