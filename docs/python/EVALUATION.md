@@ -13,7 +13,7 @@ All evaluation in VerMAS is derived from the **event log**. Every metric can be 
 │                                                                             │
 │   events.jsonl                                                              │
 │        │                                                                    │
-│        ├─→ Correctness metrics  (completion rates, GUPP compliance)        │
+│        ├─→ Correctness metrics  (completion rates, assignment compliance)  │
 │        │                                                                    │
 │        ├─→ Reliability metrics  (uptime, recovery times)                   │
 │        │                                                                    │
@@ -69,21 +69,21 @@ All evaluation in VerMAS is derived from the **event log**. Every metric can be 
 | Rework rate | rework_requests / completed | <30% |
 
 **How to measure:**
-- Count bead status transitions
+- Count work order status transitions
 - Track REWORK_REQUEST messages
-- Count abandoned beads (killed polecats without completion)
+- Count abandoned work orders (killed workers without completion)
 
-### GUPP Compliance
+### Assignment Principle Compliance
 
-**What it measures:** Do agents execute immediately when hooked?
+**What it measures:** Do agents execute immediately when assigned?
 
 | Metric | Formula | Target |
 |--------|---------|--------|
-| Hook response time | time(hook_created → work_started) | <30 sec |
-| GUPP violations | agents_that_waited_for_confirmation | 0 |
+| Assignment response time | time(assignment_created → work_started) | <30 sec |
+| Assignment violations | agents_that_waited_for_confirmation | 0 |
 
 **How to measure:**
-- Timestamp hook file creation
+- Timestamp assignment file creation
 - Timestamp first agent action after startup
 - Review session logs for confirmation prompts
 
@@ -112,13 +112,13 @@ All evaluation in VerMAS is derived from the **event log**. Every metric can be 
 
 | Metric | Formula | Target |
 |--------|---------|--------|
-| Deacon uptime | running_time / total_time | >99% |
-| Witness uptime | running_time / total_time | >99% |
-| Refinery uptime | running_time / total_time | >99% |
+| Operations uptime | running_time / total_time | >99% |
+| Supervisor uptime | running_time / total_time | >99% |
+| QA uptime | running_time / total_time | >99% |
 
 **How to measure:**
 - Track session start/stop times
-- Count Deacon restarts
+- Count Operations restarts
 - Monitor watchdog chain activity
 
 ### Recovery
@@ -142,13 +142,13 @@ All evaluation in VerMAS is derived from the **event log**. Every metric can be 
 
 | Metric | Formula | Target |
 |--------|---------|--------|
-| Hook persistence | hooks_surviving_crash / hooks_at_crash | 100% |
-| Sandbox recovery | sandboxes_with_recoverable_work / killed_polecats | >80% |
+| Assignment persistence | assignments_surviving_crash / assignments_at_crash | 100% |
+| Workspace recovery | workspaces_with_recoverable_work / killed_workers | >80% |
 | Handoff success | handoffs_continued / handoffs_created | >90% |
 
 **How to measure:**
-- Kill sessions, verify hooks persist
-- Check sandbox state after polecat kill
+- Kill sessions, verify assignments persist
+- Check workspace state after worker kill
 - Track handoff message → next session action
 
 ---
@@ -161,13 +161,13 @@ All evaluation in VerMAS is derived from the **event log**. Every metric can be 
 
 | Metric | Formula | Target |
 |--------|---------|--------|
-| Beads/hour | completed_beads / elapsed_hours | Baseline + 20% |
-| Parallel utilization | avg_active_polecats / max_slots | >60% |
+| Work orders/hour | completed_work_orders / elapsed_hours | Baseline + 20% |
+| Parallel utilization | avg_active_workers / max_slots | >60% |
 | Queue wait time | avg(queued → started) | <10 min |
 
 **How to measure:**
-- Count bead completions over time
-- Sample polecat slot utilization
+- Count work order completions over time
+- Sample worker slot utilization
 - Timestamp queue events
 
 ### Resource Usage
@@ -177,12 +177,12 @@ All evaluation in VerMAS is derived from the **event log**. Every metric can be 
 | Metric | Formula | Target |
 |--------|---------|--------|
 | Slot utilization | active_slots / total_slots | >60% |
-| Idle time | polecat_idle_time / polecat_total_time | <20% |
-| Claude calls/bead | llm_invocations / completed_beads | <50 |
+| Idle time | worker_idle_time / worker_total_time | <20% |
+| Claude calls/work order | llm_invocations / completed_work_orders | <50 |
 
 **How to measure:**
 - Track slot allocation/release
-- Measure time between polecat actions
+- Measure time between worker actions
 - Count Claude CLI invocations per session
 
 ### Pipeline Latency
@@ -191,13 +191,13 @@ All evaluation in VerMAS is derived from the **event log**. Every metric can be 
 
 | Metric | Formula | Target |
 |--------|---------|--------|
-| Time to merge | avg(bead_created → merged) | Baseline |
-| Verification time | avg(MERGE_READY → verdict) | <5 min |
+| Time to merge | avg(work_order_created → merged) | Baseline |
+| Verification time | avg(READY_FOR_QA → verdict) | <5 min |
 | Review cycle time | avg(REWORK_REQUEST → re-submit) | <30 min |
 
 **How to measure:**
-- Timestamp bead lifecycle events
-- Track verification molecule duration
+- Timestamp work order lifecycle events
+- Track verification process duration
 - Measure rework turnaround
 
 ---
@@ -255,14 +255,14 @@ All evaluation in VerMAS is derived from the **event log**. Every metric can be 
 
 ### Scenario 1: Happy Path
 
-**Setup:** Simple bead, no issues
+**Setup:** Simple work order, no issues
 
 **Expected:**
-1. Bead created → hooked within 30 sec
-2. Polecat executes immediately (GUPP)
-3. Work completed → POLECAT_DONE sent
-4. Witness forwards → MERGE_READY
-5. Refinery runs tests → PASS
+1. Work order created → assigned within 30 sec
+2. Worker executes immediately (Assignment Principle)
+3. Work completed → WORKER_DONE sent
+4. Supervisor forwards → READY_FOR_QA
+5. QA runs tests → PASS
 6. Verification runs → PASS
 7. Merge completes → MERGED sent
 
@@ -273,14 +273,14 @@ All evaluation in VerMAS is derived from the **event log**. Every metric can be 
 
 ### Scenario 2: Verification Failure
 
-**Setup:** Bead with implementation bug
+**Setup:** Work order with implementation bug
 
 **Expected:**
-1. Polecat completes work
+1. Worker completes work
 2. Tests pass (bug not caught by tests)
 3. Verification runs → FAIL (Critic finds issue)
 4. REWORK_REQUEST sent
-5. Polecat fixes issue
+5. Worker fixes issue
 6. Second attempt → PASS
 7. Merge completes
 
@@ -289,17 +289,17 @@ All evaluation in VerMAS is derived from the **event log**. Every metric can be 
 - Rework request contains actionable feedback
 - Second attempt succeeds
 
-### Scenario 3: Polecat Failure
+### Scenario 3: Worker Failure
 
-**Setup:** Polecat gets stuck
+**Setup:** Worker gets stuck
 
 **Expected:**
-1. Polecat goes idle >5 min
-2. Witness sends NUDGE
-3. Polecat still idle >15 min
-4. Witness kills session, releases slot
-5. Work remains in sandbox
-6. New polecat can continue
+1. Worker goes idle >5 min
+2. Supervisor sends NUDGE
+3. Worker still idle >15 min
+4. Supervisor kills session, releases slot
+5. Work remains in workspace
+6. New worker can continue
 7. Work eventually completes
 
 **Success criteria:**
@@ -309,14 +309,14 @@ All evaluation in VerMAS is derived from the **event log**. Every metric can be 
 
 ### Scenario 4: Watchdog Chain
 
-**Setup:** Kill Witness process
+**Setup:** Kill Supervisor process
 
 **Expected:**
-1. Witness dies
-2. Deacon detects (within 60 sec)
-3. Deacon restarts Witness
-4. Witness resumes patrol
-5. No polecats lost
+1. Supervisor dies
+2. Operations detects (within 60 sec)
+3. Operations restarts Supervisor
+4. Supervisor resumes patrol
+5. No workers lost
 
 **Success criteria:**
 - Detection within 2 patrol intervals
@@ -329,15 +329,15 @@ All evaluation in VerMAS is derived from the **event log**. Every metric can be 
 
 **Expected:**
 1. Agent creates handoff mail
-2. Hooks handoff for next session
+2. Attaches handoff to assignment for next session
 3. Session ends
 4. New session starts
-5. New session finds hooked handoff
+5. New session finds assignment with handoff
 6. Work continues from context
 
 **Success criteria:**
 - Handoff persists across sessions
-- Next session executes handoff (GUPP)
+- Next session executes handoff (Assignment Principle)
 - Context sufficient to continue
 
 ---
@@ -350,7 +350,7 @@ All evaluation in VerMAS is derived from the **event log**. Every metric can be 
 
 **Implementation:**
 - Instrument message sending/receiving
-- Track bead state transitions
+- Track work order state transitions
 - Log session start/stop events
 - Record Claude CLI calls
 
@@ -381,7 +381,7 @@ All evaluation in VerMAS is derived from the **event log**. Every metric can be 
 **Tests:**
 - Kill random sessions
 - Corrupt message files
-- Create conflicting beads
+- Create conflicting work orders
 - Flood with work
 
 **Purpose:**
@@ -399,7 +399,7 @@ Before optimization, establish baselines:
 
 | Metric | How to establish |
 |--------|------------------|
-| Completion time | Run 10 similar beads, average |
+| Completion time | Run 10 similar work orders, average |
 | Verification accuracy | Human review 20 verdicts |
 | Recovery time | Kill 5 sessions, measure recovery |
 | Message latency | Timestamp 50 messages end-to-end |
@@ -408,7 +408,7 @@ Before optimization, establish baselines:
 
 Compare against:
 - Manual development (same tasks, human only)
-- Single-agent Claude Code (no Gas Town)
+- Single-agent Claude Code (no VerMAS)
 - Previous system version
 
 ### Improvement Targets
@@ -428,8 +428,8 @@ Set targets based on:
 VERMAS DAILY REPORT - {date}
 
 WORK
-- Beads completed: X
-- Beads failed: Y
+- Work orders completed: X
+- Work orders failed: Y
 - Completion rate: Z%
 
 RELIABILITY
@@ -453,7 +453,7 @@ VERMAS WEEKLY SUMMARY - {week}
 
 TRENDS
 - Completion rate: X% (↑/↓ from last week)
-- Throughput: Y beads (↑/↓ from last week)
+- Throughput: Y work orders (↑/↓ from last week)
 - Verification accuracy: Z% (based on manual review)
 
 TOP ISSUES
@@ -477,19 +477,19 @@ All metrics derive from the event log. Here's how to compute them using the CLI 
 
 ```bash
 # Completion rate from events
-bd eval completion --since=7d
+wo eval completion --since=7d
 
-# GUPP compliance
-bd eval gupp --since=1d
+# Assignment compliance
+wo eval assignment-compliance --since=1d
 
 # Throughput
-bd eval throughput --since=24h
+wo eval throughput --since=24h
 
 # Verification accuracy (requires human labels)
-bd eval verify-accuracy --since=30d
+wo eval verify-accuracy --since=30d
 
 # Full evaluation report
-bd eval report --since=7d --output=report.json
+wo eval report --since=7d --output=report.json
 ```
 
 ### Programmatic Computation
@@ -498,25 +498,25 @@ bd eval report --since=7d --output=report.json
 from vermas.eval import EventMetrics
 from datetime import timedelta
 
-metrics = EventMetrics(".beads/events.jsonl")
+metrics = EventMetrics(".work/events.jsonl")
 
 # Completion rate
-created = metrics.count("bead.created", since=timedelta(days=7))
-closed = metrics.count("bead.status_changed",
+created = metrics.count("work_order.created", since=timedelta(days=7))
+closed = metrics.count("work_order.status_changed",
                        filter={"to_status": "closed"},
                        since=timedelta(days=7))
 completion_rate = closed / created if created > 0 else 0
 
-# GUPP compliance (response time < 30s)
-gupp_checks = metrics.get_events("hook.checked", since=timedelta(days=1))
-fast_responses = [e for e in gupp_checks if e.data["response_ms"] < 30000]
-gupp_compliance = len(fast_responses) / len(gupp_checks)
+# Assignment compliance (response time < 30s)
+assignment_checks = metrics.get_events("assignment.checked", since=timedelta(days=1))
+fast_responses = [e for e in assignment_checks if e.data["response_ms"] < 30000]
+assignment_compliance = len(fast_responses) / len(assignment_checks)
 
 # Average time to merge
-def time_to_merge(bead_id: str) -> timedelta:
-    created = metrics.get_event("bead.created", filter={"bead_id": bead_id})
-    merged = metrics.get_event("bead.status_changed",
-                               filter={"bead_id": bead_id, "to_status": "merged"})
+def time_to_merge(wo_id: str) -> timedelta:
+    created = metrics.get_event("work_order.created", filter={"work_order_id": wo_id})
+    merged = metrics.get_event("work_order.status_changed",
+                               filter={"work_order_id": wo_id, "to_status": "merged"})
     return merged.timestamp - created.timestamp
 
 # Verification pass rate
@@ -529,12 +529,12 @@ pass_rate = len(passes) / len(verdicts)
 
 | Metric | Event Query |
 |--------|-------------|
-| Completion rate | `bead.created` vs `bead.status_changed(to=closed)` |
-| GUPP compliance | `hook.checked` where `response_ms < 30000` |
+| Completion rate | `work_order.created` vs `work_order.status_changed(to=closed)` |
+| Assignment compliance | `assignment.checked` where `response_ms < 30000` |
 | Message delivery | `mail.sent` vs `mail.delivered` |
 | Recovery time | `agent.stopped` to `agent.started` duration |
 | Verification accuracy | `verify.verdict` cross-referenced with human labels |
-| Throughput | `bead.status_changed(to=closed)` per hour |
+| Throughput | `work_order.status_changed(to=closed)` per hour |
 | Idle time | `agent.working` to `agent.idle` gaps |
 
 ### Continuous Monitoring
@@ -544,15 +544,15 @@ Set up a metrics daemon that tails the event feed:
 ```python
 async def metrics_daemon():
     """Continuously compute and expose metrics."""
-    metrics = RealTimeMetrics(".beads/feed.jsonl")
+    metrics = RealTimeMetrics(".work/feed.jsonl")
 
     async for event in metrics.watch():
         # Update running totals
-        if event.event_type == "bead.created":
-            metrics.increment("beads.created")
-        elif event.event_type == "bead.status_changed":
+        if event.event_type == "work_order.created":
+            metrics.increment("work_orders.created")
+        elif event.event_type == "work_order.status_changed":
             if event.data["to_status"] == "closed":
-                metrics.increment("beads.closed")
+                metrics.increment("work_orders.closed")
 
         # Emit metrics event every minute
         if metrics.should_snapshot():
@@ -570,9 +570,9 @@ async def metrics_daemon():
 - [OPERATIONS.md](./OPERATIONS.md) - Monitoring and maintenance
 - [AGENTS.md](./AGENTS.md) - Agent roles
 - [HOOKS.md](./HOOKS.md) - Claude Code integration and git worktrees
-- [WORKFLOWS.md](./WORKFLOWS.md) - Molecule system
+- [WORKFLOWS.md](./WORKFLOWS.md) - Process system
 - [MESSAGING.md](./MESSAGING.md) - Communication patterns
 - [EVENTS.md](./EVENTS.md) - Event sourcing and change feeds
-- [VERIFICATION.md](./VERIFICATION.md) - VerMAS Inspector pipeline
+- [VERIFICATION.md](./VERIFICATION.md) - VerMAS verification pipeline
 - [SCHEMAS.md](./SCHEMAS.md) - Data specifications
 - [CLI.md](./CLI.md) - Evaluation commands

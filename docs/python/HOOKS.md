@@ -1,13 +1,13 @@
 # VerMAS Hooks and Claude Code Integration
 
-> How hooks, profiles, and Claude Code CLI work together
+> How assignments, profiles, and Claude Code CLI work together
 
 ## Overview
 
 VerMAS uses **Claude Code** as its agent runtime. Each agent is a Claude Code session running in tmux with:
 - A **profile** defining its role (CLAUDE.md system prompt)
-- A **hook** defining its assigned work
-- An **identity** (BD_ACTOR environment variable)
+- An **assignment** defining its assigned work
+- An **identity** (AGENT_ID environment variable)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -15,10 +15,10 @@ VerMAS uses **Claude Code** as its agent runtime. Each agent is a Claude Code se
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │   ┌─────────────┐     ┌─────────────┐     ┌─────────────┐                  │
-│   │   Profile   │     │    Hook     │     │  BD_ACTOR   │                  │
+│   │   Profile   │     │ Assignment  │     │  AGENT_ID   │                  │
 │   │             │     │             │     │             │                  │
-│   │  CLAUDE.md  │     │ .hook-agent │     │ Environment │                  │
-│   │  (role def) │     │ (work ref)  │     │ (identity)  │                  │
+│   │  CLAUDE.md  │     │.assignment- │     │ Environment │                  │
+│   │  (role def) │     │   agent     │     │ (identity)  │                  │
 │   └──────┬──────┘     └──────┬──────┘     └──────┬──────┘                  │
 │          │                   │                   │                          │
 │          └───────────────────┼───────────────────┘                          │
@@ -37,20 +37,20 @@ VerMAS uses **Claude Code** as its agent runtime. Each agent is a Claude Code se
 
 ## Two Types of Hooks
 
-VerMAS has **two distinct hook systems** that work together:
+VerMAS has **two distinct systems** that work together:
 
-### 1. Gas Town Hooks (Work Assignment)
+### 1. Assignment Files (Work Assignment)
 
-File-based hooks that assign work to agents:
+File-based assignments that give work to agents:
 
 ```
-.beads/.hook-{agent}     # Contains: bead:gt-abc123
+.work/.assignment-{agent}     # Contains: work_order:wo-abc123
 ```
 
 - **What**: Simple text files mapping agents to work
-- **Where**: `.beads/` directory
-- **Format**: `{type}:{id}` (e.g., `bead:gt-abc123`, `mail:msg-xyz`)
-- **Checked by**: Agent on startup via `gt hook`
+- **Where**: `.work/` directory
+- **Format**: `{type}:{id}` (e.g., `work_order:wo-abc123`, `mail:msg-xyz`)
+- **Checked by**: Agent on startup via `co assignment`
 
 ### 2. Claude Code Hooks (Lifecycle Events)
 
@@ -72,59 +72,59 @@ Claude Code's built-in hook system for executing code at lifecycle points:
 
 ---
 
-## Gas Town Hook System
+## Assignment System
 
-### Hook File Format
+### Assignment File Format
 
 ```
 {type}:{reference_id}
 ```
 
 Types:
-- `bead` - Work issue to execute
+- `work_order` - Work order to execute
 - `mail` - Mail message (for handoffs)
-- `mol` - Molecule (workflow instance)
+- `process` - Process (workflow instance)
 
 Examples:
 ```
-bead:gt-abc123
+work_order:wo-abc123
 mail:msg-xyz789
-mol:mol-verify-def456
+process:proc-verify-def456
 ```
 
-### Hook Commands
+### Assignment Commands
 
 ```bash
-# Check your hook
-gt hook                    # Shows what's hooked (if anything)
+# Check your assignment
+co assignment                    # Shows what's assigned (if anything)
 
-# Set a hook (typically done by gt sling)
-gt hook set <agent> bead:<id>
+# Set an assignment (typically done by co dispatch)
+co assignment set <agent> work_order:<id>
 
-# Clear a hook
-gt hook clear <agent>
+# Clear an assignment
+co assignment clear <agent>
 
-# Attach mail as hook (for handoffs)
-gt hook attach <mail-id>
+# Attach mail as assignment (for handoffs)
+co assignment attach <mail-id>
 ```
 
-### Hook Lifecycle
+### Assignment Lifecycle
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           HOOK LIFECYCLE                                     │
+│                       ASSIGNMENT LIFECYCLE                                   │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│   1. SLING                                                                  │
+│   1. DISPATCH                                                               │
 │   ───────────────────────────────────────                                   │
-│   gt sling bead-123 gastown                                                 │
+│   co dispatch wo-123 project-a                                              │
 │        │                                                                    │
 │        ▼                                                                    │
-│   Write .beads/.hook-gastown-polecats-slot0                                │
-│   Content: "bead:bead-123"                                                  │
+│   Write .work/.assignment-project-a-workers-slot0                          │
+│   Content: "work_order:wo-123"                                              │
 │        │                                                                    │
 │        ▼                                                                    │
-│   Emit event: bead.hooked                                                   │
+│   Emit event: work_order.assigned                                           │
 │                                                                             │
 │   2. AGENT STARTUP                                                          │
 │   ───────────────────────────────────────                                   │
@@ -134,27 +134,27 @@ gt hook attach <mail-id>
 │   Profile loads CLAUDE.md (with startup instructions)                       │
 │        │                                                                    │
 │        ▼                                                                    │
-│   Agent runs: gt hook                                                       │
+│   Agent runs: co assignment                                                 │
 │        │                                                                    │
 │        ▼                                                                    │
-│   Emit event: hook.checked                                                  │
+│   Emit event: agent.assignment_checked                                      │
 │                                                                             │
-│   3. GUPP EXECUTION                                                         │
+│   3. ASSIGNMENT PRINCIPLE                                                   │
 │   ───────────────────────────────────────                                   │
-│   Hook found? → EXECUTE IMMEDIATELY                                         │
+│   Assignment found? → EXECUTE IMMEDIATELY                                   │
 │        │                                                                    │
 │        ▼                                                                    │
 │   Emit event: agent.working                                                 │
 │                                                                             │
 │   4. COMPLETION                                                             │
 │   ───────────────────────────────────────                                   │
-│   Work done → gt polecat done                                               │
+│   Work done → co worker done                                                │
 │        │                                                                    │
 │        ▼                                                                    │
-│   Hook cleared, slot released                                               │
+│   Assignment cleared, slot released                                         │
 │        │                                                                    │
 │        ▼                                                                    │
-│   Emit event: hook.cleared                                                  │
+│   Emit event: assignment.cleared                                            │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -189,7 +189,7 @@ Located in `.claude/settings.json` or `.claude/hooks/`:
     ],
     "UserPromptSubmit": [
       {
-        "command": "gt prime"
+        "command": "co prime"
       }
     ],
     "Stop": [
@@ -205,10 +205,10 @@ Located in `.claude/settings.json` or `.claude/hooks/`:
 
 | Hook | Trigger | VerMAS Usage |
 |------|---------|--------------|
-| `UserPromptSubmit` | Before processing user input | Load context via `gt prime` |
+| `UserPromptSubmit` | Before processing user input | Load context via `co prime` |
 | `PreToolUse` | Before tool execution | Verify intent before writes |
 | `PostToolUse` | After tool execution | Emit tool usage events |
-| `Stop` | Session ending | Emit session end event, sync beads |
+| `Stop` | Session ending | Emit session end event, sync work orders |
 | `Notification` | System notifications | Forward to mail system |
 
 ### Example: Startup Hook
@@ -220,11 +220,11 @@ The `UserPromptSubmit` hook runs before the first prompt:
 # .claude/hooks/UserPromptSubmit
 
 # Prime context for the agent
-gt prime
+co prime
 
 # Emit startup event
 vermas emit-event agent.started \
-  --actor="$BD_ACTOR" \
+  --actor="$AGENT_ID" \
   --data="{\"session\": \"$TMUX_PANE\"}"
 ```
 
@@ -240,7 +240,7 @@ TOOL="$1"
 
 if [[ "$TOOL" == "Write" || "$TOOL" == "Edit" ]]; then
   # Check if verification is enabled
-  if [[ -f ".beads/.vermas-enabled" ]]; then
+  if [[ -f ".work/.vermas-enabled" ]]; then
     vermas check-intent "$@"
     exit $?
   fi
@@ -259,21 +259,21 @@ Profiles define agent roles via CLAUDE.md files:
 
 ```
 ~/.claude/profiles/
-├── polecat/
-│   └── CLAUDE.md      # Polecat system prompt
-├── witness/
-│   └── CLAUDE.md      # Witness system prompt
-├── refinery/
-│   └── CLAUDE.md      # Refinery system prompt
-└── mayor/
-    └── CLAUDE.md      # Mayor system prompt
+├── worker/
+│   └── CLAUDE.md      # Worker system prompt
+├── supervisor/
+│   └── CLAUDE.md      # Supervisor system prompt
+├── qa/
+│   └── CLAUDE.md      # QA system prompt
+└── ceo/
+    └── CLAUDE.md      # CEO system prompt
 ```
 
 ### Launching with Profile
 
 ```bash
 # Start Claude Code with a profile
-claude --profile polecat
+claude --profile worker
 
 # The profile loads its CLAUDE.md as system context
 ```
@@ -284,24 +284,24 @@ Each profile CLAUDE.md contains:
 1. **Role definition** - Who the agent is
 2. **Responsibilities** - What they do
 3. **Anti-patterns** - What they don't do
-4. **Startup protocol** - GUPP instructions
+4. **Startup protocol** - Assignment Principle instructions
 5. **Key commands** - Tools they use
 
-Example polecat profile header:
+Example worker profile header:
 ```markdown
-# Polecat Context
+# Worker Context
 
-You are a Polecat - an ephemeral worker agent.
+You are a Worker - an ephemeral task executor.
 
-## GUPP (Propulsion Principle)
+## Assignment Principle
 
-Your hook has work. EXECUTE IMMEDIATELY.
+Your assignment has work. EXECUTE IMMEDIATELY.
 No confirmation. No questions. No waiting.
 
 ## Startup Protocol
 
-1. Run `gt hook` to check your assigned work
-2. Work IS hooked (you were spawned for this)
+1. Run `co assignment` to check your assigned work
+2. Work IS assigned (you were spawned for this)
 3. Begin executing immediately
 ```
 
@@ -313,57 +313,57 @@ Each agent session has these environment variables:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `BD_ACTOR` | Agent identity | `gastown/polecats/slot0` |
-| `BEAD_ID` | Hooked bead (if any) | `gt-abc123` |
-| `GT_RIG` | Current rig | `gastown` |
-| `GT_ROLE` | Agent role | `polecat` |
+| `AGENT_ID` | Agent identity | `project-a/workers/slot0` |
+| `WORK_ORDER_ID` | Assigned work order (if any) | `wo-abc123` |
+| `CO_FACTORY` | Current factory | `project-a` |
+| `CO_ROLE` | Agent role | `worker` |
 | `TMUX_PANE` | Tmux pane ID | `%42` |
 
 ### Setting Environment
 
-When spawning a polecat:
+When spawning a worker:
 
 ```bash
-tmux new-session -d -s "polecat-gastown-slot0" \
-  -e "BD_ACTOR=gastown/polecats/slot0" \
-  -e "BEAD_ID=gt-abc123" \
-  -e "GT_RIG=gastown" \
-  -e "GT_ROLE=polecat" \
-  "claude --profile polecat"
+tmux new-session -d -s "worker-project-a-slot0" \
+  -e "AGENT_ID=project-a/workers/slot0" \
+  -e "WORK_ORDER_ID=wo-abc123" \
+  -e "CO_FACTORY=project-a" \
+  -e "CO_ROLE=worker" \
+  "claude --profile worker"
 ```
 
 ---
 
 ## Git Worktrees
 
-Each polecat gets its own git worktree for isolation:
+Each worker gets its own git worktree for isolation:
 
 ### Worktree Structure
 
 ```
-<rig>/
-├── polecats/
+<factory>/
+├── workers/
 │   ├── slot0/           # Worktree for slot0
 │   │   ├── .git         # Worktree git link
 │   │   └── <project>    # Full project files
 │   ├── slot1/           # Worktree for slot1
 │   └── slot2/
-├── crew/
-│   └── frontend/        # Human crew worktree
-└── .beads/              # Shared beads (rig level)
+├── teams/
+│   └── frontend/        # Human team worktree
+└── .work/               # Shared work orders (factory level)
 ```
 
 ### Creating Worktrees
 
 ```bash
-# Create worktree for a polecat slot
-git worktree add polecats/slot0 -b polecat-slot0-work
+# Create worktree for a worker slot
+git worktree add workers/slot0 -b worker-slot0-work
 
 # List all worktrees
 git worktree list
 
 # Remove when done
-git worktree remove polecats/slot0
+git worktree remove workers/slot0
 ```
 
 ### Why Worktrees?
@@ -377,13 +377,13 @@ git worktree remove polecats/slot0
 
 ```bash
 # Create worktree for slot
-gt worktree create <rig> <slot>
+co worktree create <factory> <slot>
 
-# List worktrees in rig
-gt worktree list <rig>
+# List worktrees in factory
+co worktree list <factory>
 
 # Clean up worktree after completion
-gt worktree remove <rig> <slot>
+co worktree remove <factory> <slot>
 ```
 
 ---
@@ -397,35 +397,35 @@ gt worktree remove <rig> <slot>
 │                         AGENT SPAWN SEQUENCE                                 │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│   gt sling gt-abc123 gastown                                                │
+│   co dispatch wo-abc123 project-a                                           │
 │        │                                                                    │
 │        ▼                                                                    │
 │   1. Allocate slot (find free slot0-4)                                      │
 │        │                                                                    │
 │        ▼                                                                    │
-│   2. Create worktree: git worktree add polecats/slot0 -b work-slot0         │
+│   2. Create worktree: git worktree add workers/slot0 -b work-slot0          │
 │        │                                                                    │
 │        ▼                                                                    │
-│   3. Write hook: echo "bead:gt-abc123" > .beads/.hook-...-slot0            │
+│   3. Write assignment: echo "work_order:wo-abc123" > .work/.assignment-...  │
 │        │                                                                    │
 │        ▼                                                                    │
 │   4. Create tmux session with environment                                   │
-│      tmux new-session -d -s "polecat-gastown-slot0" \                       │
-│        -e "BD_ACTOR=gastown/polecats/slot0" \                               │
-│        -e "BEAD_ID=gt-abc123" \                                             │
-│        "claude --profile polecat"                                           │
+│      tmux new-session -d -s "worker-project-a-slot0" \                      │
+│        -e "AGENT_ID=project-a/workers/slot0" \                              │
+│        -e "WORK_ORDER_ID=wo-abc123" \                                       │
+│        "claude --profile worker"                                            │
 │        │                                                                    │
 │        ▼                                                                    │
 │   5. Claude Code starts, profile loads CLAUDE.md                            │
 │        │                                                                    │
 │        ▼                                                                    │
-│   6. UserPromptSubmit hook runs: gt prime                                   │
+│   6. UserPromptSubmit hook runs: co prime                                   │
 │        │                                                                    │
 │        ▼                                                                    │
-│   7. Agent checks hook: gt hook → finds bead:gt-abc123                      │
+│   7. Agent checks assignment: co assignment → finds work_order:wo-abc123    │
 │        │                                                                    │
 │        ▼                                                                    │
-│   8. GUPP: Execute immediately                                              │
+│   8. Assignment Principle: Execute immediately                              │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -433,13 +433,13 @@ gt worktree remove <rig> <slot>
 ### Session End
 
 ```bash
-# Polecat signals completion
-gt polecat done
+# Worker signals completion
+co worker done
 
 # This:
 # 1. Commits and pushes changes
-# 2. Sends POLECAT_DONE to Witness
-# 3. Clears hook
+# 2. Sends WORKER_DONE to Supervisor
+# 3. Clears assignment
 # 4. Releases slot
 # 5. Session terminates
 ```
@@ -448,13 +448,13 @@ gt polecat done
 
 ## Events Emitted
 
-All hook operations emit events. See [EVENTS.md](./EVENTS.md).
+All assignment operations emit events. See [EVENTS.md](./EVENTS.md).
 
 | Event | When | Data |
 |-------|------|------|
-| `hook.set` | Hook written | agent, ref_type, ref_id |
-| `hook.checked` | Agent checked hook | agent, found, response_ms |
-| `hook.cleared` | Hook removed | agent, previous_ref |
+| `assignment.set` | Assignment written | agent, ref_type, ref_id |
+| `assignment.checked` | Agent checked assignment | agent, found, response_ms |
+| `assignment.cleared` | Assignment removed | agent, previous_ref |
 | `agent.started` | Claude session began | actor, profile, worktree |
 | `agent.stopped` | Claude session ended | actor, reason |
 
@@ -466,7 +466,7 @@ All hook operations emit events. See [EVENTS.md](./EVENTS.md).
 
 #### Agent Won't Start
 
-**Symptom:** `gt sling` runs but no tmux session appears
+**Symptom:** `co dispatch` runs but no tmux session appears
 
 **Check:**
 ```bash
@@ -474,10 +474,10 @@ All hook operations emit events. See [EVENTS.md](./EVENTS.md).
 tmux list-sessions
 
 # Is the worktree created?
-ls -la <rig>/polecats/slot0/
+ls -la <factory>/workers/slot0/
 
 # Check for errors in spawn
-gt polecat spawn <rig> --verbose
+co worker spawn <factory> --verbose
 ```
 
 **Common causes:**
@@ -487,26 +487,26 @@ gt polecat spawn <rig> --verbose
 
 ---
 
-#### Hook Not Found
+#### Assignment Not Found
 
-**Symptom:** Agent starts but says "Hook is empty"
+**Symptom:** Agent starts but says "Assignment is empty"
 
 **Check:**
 ```bash
-# Is hook file present?
-ls -la .beads/.hook-*
+# Is assignment file present?
+ls -la .work/.assignment-*
 
-# What's in the hook?
-cat .beads/.hook-gastown-polecats-slot0
+# What's in the assignment?
+cat .work/.assignment-project-a-workers-slot0
 
-# Is BD_ACTOR set correctly?
-echo $BD_ACTOR
+# Is AGENT_ID set correctly?
+echo $AGENT_ID
 ```
 
 **Common causes:**
-- Hook file path mismatch (slashes vs dashes)
-- BD_ACTOR environment not set
-- Hook was cleared before agent started
+- Assignment file path mismatch (slashes vs dashes)
+- AGENT_ID environment not set
+- Assignment was cleared before agent started
 
 ---
 
@@ -517,17 +517,17 @@ echo $BD_ACTOR
 **Check:**
 ```bash
 # Attach and see what's happening
-tmux attach -t polecat-gastown-slot0
+tmux attach -t worker-project-a-slot0
 
 # Check if Claude is waiting for input
 # Look for [?] prompts
 
 # Check events for last activity
-bd events list --actor=gastown/polecats/slot0 --since=1h
+wo events list --actor=project-a/workers/slot0 --since=1h
 ```
 
 **Common causes:**
-- Claude waiting for confirmation (shouldn't happen with GUPP)
+- Claude waiting for confirmation (shouldn't happen with Assignment Principle)
 - Rate limiting
 - Network issues
 - Infinite loop in tool use
@@ -535,8 +535,8 @@ bd events list --actor=gastown/polecats/slot0 --since=1h
 **Recovery:**
 ```bash
 # Kill and respawn
-tmux kill-session -t polecat-gastown-slot0
-gt polecat spawn <rig> <slot>
+tmux kill-session -t worker-project-a-slot0
+co worker spawn <factory> <slot>
 ```
 
 ---
@@ -572,13 +572,13 @@ git worktree remove <path> --force
 **Check:**
 ```bash
 # Is events.jsonl writable?
-ls -la .beads/events.jsonl
+ls -la .work/events.jsonl
 
 # Tail the feed
-tail -f .beads/feed.jsonl
+tail -f .work/feed.jsonl
 
 # Check for errors
-cat .beads/events.jsonl | tail -5 | jq .
+cat .work/events.jsonl | tail -5 | jq .
 ```
 
 **Common causes:**
@@ -590,43 +590,43 @@ cat .beads/events.jsonl | tail -5 | jq .
 
 #### Mail Not Delivered
 
-**Symptom:** `gt mail send` succeeds but recipient doesn't see it
+**Symptom:** `co send` succeeds but recipient doesn't see it
 
 **Check:**
 ```bash
 # Check sender's outbox
-grep "from.*$SENDER" .beads/messages.jsonl
+grep "from.*$SENDER" .work/messages.jsonl
 
 # Check recipient's inbox
-grep "to.*$RECIPIENT" .beads/messages.jsonl
+grep "to.*$RECIPIENT" .work/messages.jsonl
 
 # Verify addresses
-echo "Sender: $BD_ACTOR"
+echo "Sender: $AGENT_ID"
 ```
 
 **Common causes:**
 - Wrong recipient address (typo in path)
 - Messages.jsonl not synced
-- Recipient checking wrong beads location
+- Recipient checking wrong work location
 
 ---
 
 ### Debugging Commands
 
-#### Hook Debugging
+#### Assignment Debugging
 
 ```bash
-# View all hooks
-ls -la .beads/.hook-*
+# View all assignments
+ls -la .work/.assignment-*
 
-# Check specific agent's hook
-cat .beads/.hook-gastown-polecats-slot0
+# Check specific agent's assignment
+cat .work/.assignment-project-a-workers-slot0
 
-# View hook events
-bd events list --type=hook.*
+# View assignment events
+wo events list --type=assignment.*
 
-# Manually set a hook (for testing)
-echo "bead:gt-test123" > .beads/.hook-test-agent
+# Manually set an assignment (for testing)
+echo "work_order:wo-test123" > .work/.assignment-test-agent
 ```
 
 #### Session Debugging
@@ -636,15 +636,15 @@ echo "bead:gt-test123" > .beads/.hook-test-agent
 tmux list-sessions
 
 # Attach to watch agent (read-only)
-tmux attach -t polecat-gastown-slot0
+tmux attach -t worker-project-a-slot0
 
 # Detach: Ctrl+B then D
 
 # Kill a stuck session
-tmux kill-session -t polecat-gastown-slot0
+tmux kill-session -t worker-project-a-slot0
 
 # View session environment
-tmux show-environment -t polecat-gastown-slot0
+tmux show-environment -t worker-project-a-slot0
 ```
 
 #### Worktree Debugging
@@ -654,7 +654,7 @@ tmux show-environment -t polecat-gastown-slot0
 git worktree list
 
 # Check worktree status
-cd <rig>/polecats/slot0 && git status
+cd <factory>/workers/slot0 && git status
 
 # Prune stale worktrees
 git worktree prune
@@ -667,29 +667,29 @@ git worktree remove <path>
 
 ```bash
 # Tail events in real-time
-tail -f .beads/feed.jsonl | jq .
+tail -f .work/feed.jsonl | jq .
 
 # Filter by type
-grep '"event_type":"bead' .beads/events.jsonl | tail -10 | jq .
+grep '"event_type":"work_order' .work/events.jsonl | tail -10 | jq .
 
 # Filter by actor
-grep '"actor":"mayor"' .beads/events.jsonl | jq .
+grep '"actor":"ceo"' .work/events.jsonl | jq .
 
 # Count events by type
-cat .beads/events.jsonl | jq -r '.event_type' | sort | uniq -c
+cat .work/events.jsonl | jq -r '.event_type' | sort | uniq -c
 ```
 
 #### Log Debugging
 
 ```bash
 # Session logs
-ls logs/polecat-gastown-slot0/
+ls logs/worker-project-a-slot0/
 
 # Tail Claude output
-tail -f logs/polecat-gastown-slot0/claude.log
+tail -f logs/worker-project-a-slot0/claude.log
 
 # Search for errors
-grep -i error logs/polecat-gastown-slot0/*.log
+grep -i error logs/worker-project-a-slot0/*.log
 ```
 
 ---
@@ -702,32 +702,32 @@ When an agent is stuck beyond repair:
 
 ```bash
 # 1. Kill the session
-tmux kill-session -t polecat-gastown-slot0
+tmux kill-session -t worker-project-a-slot0
 
-# 2. Clear the hook
-rm .beads/.hook-gastown-polecats-slot0
+# 2. Clear the assignment
+rm .work/.assignment-project-a-workers-slot0
 
 # 3. Prune the worktree
-git worktree remove polecats/slot0 --force 2>/dev/null
+git worktree remove workers/slot0 --force 2>/dev/null
 git worktree prune
 
-# 4. Re-sling the work
-gt sling <bead-id> <rig>
+# 4. Re-dispatch the work
+co dispatch <wo-id> <factory>
 ```
 
-#### Beads Recovery
+#### Work Order Recovery
 
-If `.beads/` gets corrupted:
+If `.work/` gets corrupted:
 
 ```bash
 # 1. Check git status
-cd .beads && git status
+cd .work && git status
 
 # 2. Reset to last known good state
-git checkout HEAD -- issues.jsonl messages.jsonl
+git checkout HEAD -- work_orders.jsonl messages.jsonl
 
 # 3. Re-sync
-bd sync --force
+wo sync --force
 ```
 
 #### Event Log Recovery
@@ -736,12 +736,12 @@ If events.jsonl is corrupted:
 
 ```bash
 # 1. Validate JSON lines
-cat .beads/events.jsonl | while read line; do
+cat .work/events.jsonl | while read line; do
   echo "$line" | jq . > /dev/null || echo "Bad line: $line"
 done
 
 # 2. Filter to valid lines
-cat .beads/events.jsonl | jq -c . > events.jsonl.clean
+cat .work/events.jsonl | jq -c . > events.jsonl.clean
 mv events.jsonl.clean events.jsonl
 ```
 
@@ -754,6 +754,6 @@ mv events.jsonl.clean events.jsonl
 - [AGENTS.md](./AGENTS.md) - Agent roles
 - [EVENTS.md](./EVENTS.md) - Event sourcing
 - [MESSAGING.md](./MESSAGING.md) - Mail system
-- [WORKFLOWS.md](./WORKFLOWS.md) - Molecule workflows
+- [WORKFLOWS.md](./WORKFLOWS.md) - Process workflows
 - [SCHEMAS.md](./SCHEMAS.md) - Data specifications
 - [CLI.md](./CLI.md) - Command reference

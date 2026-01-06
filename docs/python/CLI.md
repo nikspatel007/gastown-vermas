@@ -1,6 +1,6 @@
 # VerMAS CLI Reference
 
-> Complete command reference for gt and bd tools
+> Complete command reference for co and wo tools
 
 ## Overview
 
@@ -8,8 +8,8 @@ VerMAS provides two CLI tools built on proven technologies:
 
 | Tool | Purpose | Framework |
 |------|---------|-----------|
-| `gt` | Gas Town operations (agents, mail, convoys) | Typer (Python) |
-| `bd` | Beads operations (issues, workflows, events) | Typer (Python) |
+| `co` | Company operations (agents, mail, sprints) | Typer (Python) |
+| `wo` | Work Order operations (tasks, workflows, events) | Typer (Python) |
 
 Both tools follow Unix philosophy:
 - Small, focused commands
@@ -19,216 +19,215 @@ Both tools follow Unix philosophy:
 
 ---
 
-## gt - Gas Town CLI
+## co - Company CLI
 
 ### Status & Navigation
 
 ```bash
-gt status                     # Overall town status
-gt rigs                       # List all rigs
-gt prime                      # Load context (run on session start)
+co status                     # Overall company status
+co factories                  # List all factories
+co prime                      # Load context (run on session start)
 ```
 
-### Hook Commands
+### Assignment Commands
 
 ```bash
-gt hook                       # Check your assigned work
-gt hook set <agent> <ref>     # Assign work to agent
-gt hook clear <agent>         # Clear agent's hook
-gt hook attach <mail-id>      # Hook mail for handoff
+co assignment                 # Check your assigned work
+co assignment set <agent> <ref>     # Assign work to agent
+co assignment clear <agent>         # Clear agent's assignment
+co assignment attach <mail-id>      # Attach mail for handoff
 ```
 
 ### Mail Commands
 
 ```bash
-gt mail inbox                 # Check messages
-gt mail read <id>             # Read specific message
-gt mail send <addr> -s "Subject" -m "Message"
-gt mail archive <id>          # Archive message
-gt mail list --unread         # List unread only
+co inbox                      # Check messages
+co read <id>                  # Read specific message
+co send <addr> -s "Subject" -m "Message"
+co archive <id>               # Archive message
+co mail list --unread         # List unread only
 ```
 
-### Polecat Commands
+### Worker Commands
 
 ```bash
-gt polecat list [rig]         # List polecats in rig
-gt polecat spawn <rig>        # Spawn new polecat
-gt polecat done               # Signal work complete
-gt polecat status <slot>      # Check polecat status
+co workers [factory]          # List workers in factory
+co worker spawn <factory>     # Spawn new worker
+co worker done                # Signal work complete
+co worker status <slot>       # Check worker status
 ```
 
 ### Work Dispatch
 
 ```bash
-gt sling <bead> <rig>         # Assign bead to polecat
-gt convoy list                # Dashboard of active work
-gt convoy create "name" <ids> # Create convoy for batch
-gt convoy status <id>         # Detailed convoy progress
+co dispatch <wo> <factory>    # Assign work order to worker
+co sprints                    # Dashboard of active work
+co sprint create "name" <ids> # Create sprint for batch
+co sprint status <id>         # Detailed sprint progress
 ```
 
 ### Worktree Commands
 
 ```bash
-gt worktree create <rig> <slot>   # Create polecat worktree
-gt worktree list <rig>            # List rig worktrees
-gt worktree remove <rig> <slot>   # Clean up worktree
+co worktree create <factory> <slot>   # Create worker worktree
+co worktree list <factory>            # List factory worktrees
+co worktree remove <factory> <slot>   # Clean up worktree
 ```
 
-### Rig Management
+### Factory Management
 
 ```bash
-gt rig add <name> <url>       # Add new rig
-gt rig list                   # List all rigs
-gt rig status <name>          # Rig health check
+co factory add <name> <url>   # Add new factory
+co factory list               # List all factories
+co factory status <name>      # Factory health check
 ```
 
 ### Handoff
 
 ```bash
-gt handoff -m "Context..."    # Create handoff for next session
+co handoff -m "Context..."    # Create handoff for next session
 ```
 
 ---
 
-## bd - Beads CLI
+## wo - Work Order CLI
 
 ### Finding Work
 
 ```bash
-bd ready                      # Issues ready to work (no blockers)
-bd list                       # All issues
-bd list --status=open         # Filter by status
-bd list --type=bug            # Filter by type
-bd list --priority=0          # Filter by priority (P0=critical)
-bd show <id>                  # Detailed issue view
+wo ready                      # Work orders ready to work (no blockers)
+wo list                       # All work orders
+wo list --status=open         # Filter by status
+wo list --type=bug            # Filter by type
+wo list --priority=0          # Filter by priority (P0=critical)
+wo show <id>                  # Detailed work order view
 ```
 
-### Creating Issues
+### Creating Work Orders
 
 ```bash
-bd create --title="..." --type=task --priority=2
-bd create --title="..." --type=bug --priority=0
-bd create --title="..." --type=feature
-bd create --title="..." --type=epic
+wo create --title="..." --type=task --priority=2
+wo create --title="..." --type=bug --priority=0
+wo create --title="..." --type=feature
+wo create --title="..." --type=epic
 ```
 
-**Issue Types:** `task`, `bug`, `feature`, `epic`, `merge-request`, `event`, `message`
+**Work Order Types:** `task`, `bug`, `feature`, `epic`, `merge-request`, `event`, `message`
 
 **Priority:** 0-4 (0=P0 critical, 2=P2 medium, 4=P4 backlog)
 
-### Updating Issues
+### Updating Work Orders
 
 ```bash
-bd update <id> --status=in_progress
-bd update <id> --assignee=username
-bd update <id> --priority=1
-bd update <id> --title="New title"
+wo update <id> --status=in_progress
+wo update <id> --assignee=username
+wo update <id> --priority=1
+wo update <id> --title="New title"
 ```
 
-### Closing Issues
+### Closing Work Orders
 
 ```bash
-bd close <id>                 # Mark complete
-bd close <id1> <id2> ...      # Close multiple
-bd close <id> --reason="..."  # Close with reason
+wo close <id>                 # Mark complete
+wo close <id1> <id2> ...      # Close multiple
+wo close <id> --reason="..."  # Close with reason
 ```
 
 ### Dependencies
 
 ```bash
-bd dep add <issue> <depends-on>   # Add dependency
-bd dep remove <issue> <dep>       # Remove dependency
-bd blocked                        # Show blocked issues
+wo dep add <wo> <depends-on>  # Add dependency
+wo dep remove <wo> <dep>      # Remove dependency
+wo blocked                    # Show blocked work orders
 ```
 
 **Note:** Think "X needs Y" not "X before Y"
-- `bd dep add task-B task-A` means "B depends on A" (A blocks B)
+- `wo dep add task-B task-A` means "B depends on A" (A blocks B)
 
 ### Sync
 
 ```bash
-bd sync                       # Sync with git remote
-bd sync --status              # Check sync status
-bd sync --force               # Force sync
+wo sync                       # Sync with git remote
+wo sync --status              # Check sync status
+wo sync --force               # Force sync
 ```
 
 ### Statistics
 
 ```bash
-bd stats                      # Project statistics
-bd doctor                     # Check for issues
+wo stats                      # Project statistics
+wo doctor                     # Check for issues
 ```
 
 ---
 
-## bd mol - Molecule Commands
+## wo process - Process Commands
 
 ### Workflow Management
 
 ```bash
-bd mol list                   # List active molecules
-bd mol show <id>              # Show molecule details
-bd mol steps <id>             # Show step status
+wo process list               # List active processes
+wo process show <id>          # Show process details
+wo process steps <id>         # Show step status
 ```
 
 ### Lifecycle Operations
 
 ```bash
-bd mol cook <formula>         # Formula → Protomolecule
-bd mol pour <proto> <bead>    # Create persistent molecule
-bd mol wisp <formula>         # Create ephemeral wisp
-bd mol squash <id>            # Archive with summary
-bd mol burn <id>              # Discard without record
+wo process compile <template> # Template → Ready
+wo process start <wo>         # Ready → Active (attach to work order)
+wo process complete <id>      # Active → Archive with summary
+wo process cancel <id>        # Discard without record
 ```
 
 ---
 
-## bd events - Event Commands
+## wo events - Event Commands
 
 ### Querying Events
 
 ```bash
-bd events list                    # Last 50 events
-bd events list --type=bead.*      # Filter by type
-bd events list --actor=mayor      # Filter by actor
-bd events list --since=1h         # Time filter
+wo events list                    # Last 50 events
+wo events list --type=work_order.*  # Filter by type
+wo events list --actor=ceo        # Filter by actor
+wo events list --since=1h         # Time filter
 ```
 
 ### Real-time
 
 ```bash
-bd events tail                    # Watch feed.jsonl
+wo events tail                    # Watch feed.jsonl
 ```
 
 ### History
 
 ```bash
-bd events replay <bead-id>        # Event history for bead
+wo events replay <wo-id>          # Event history for work order
 ```
 
 ### Statistics
 
 ```bash
-bd events stats                   # Counts by type
-bd events stats --since=1d        # Last 24 hours
+wo events stats                   # Counts by type
+wo events stats --since=1d        # Last 24 hours
 ```
 
 ### Export
 
 ```bash
-bd events export --since=2026-01-01 > events.jsonl
+wo events export --since=2026-01-01 > events.jsonl
 ```
 
 ---
 
-## bd eval - Evaluation Commands
+## wo eval - Evaluation Commands
 
 ```bash
-bd eval completion --since=7d     # Completion rate
-bd eval gupp --since=1d           # GUPP compliance
-bd eval throughput --since=24h    # Work throughput
-bd eval verify-accuracy --since=30d
-bd eval report --since=7d --output=report.json
+wo eval completion --since=7d     # Completion rate
+wo eval assignment --since=1d     # Assignment principle compliance
+wo eval throughput --since=24h    # Work throughput
+wo eval verify-accuracy --since=30d
+wo eval report --since=7d --output=report.json
 ```
 
 ---
@@ -238,35 +237,35 @@ bd eval report --since=7d --output=report.json
 ### Starting a Session (Any Agent)
 
 ```bash
-gt prime                      # Load context
-gt hook                       # Check for work
-gt mail inbox                 # Check messages
+co prime                      # Load context
+co assignment                 # Check for work
+co inbox                      # Check messages
 ```
 
-### Mayor Workflow
+### CEO Workflow
 
 ```bash
-gt status                     # Town overview
-bd ready                      # Find work to dispatch
-gt sling <bead> <rig>         # Assign to polecat
-gt convoy list                # Monitor progress
+co status                     # Company overview
+wo ready                      # Find work to dispatch
+co dispatch <wo> <factory>    # Assign to worker
+co sprints                    # Monitor progress
 ```
 
-### Polecat Workflow
+### Worker Workflow
 
 ```bash
-gt hook                       # Find assigned work (GUPP)
-bd show <bead-id>             # Understand the task
+co assignment                 # Find assigned work (Assignment Principle)
+wo show <wo-id>               # Understand the task
 # ... do the work ...
 git add . && git commit -m "..." && git push
-gt polecat done               # Signal completion
+co worker done                # Signal completion
 ```
 
-### Witness Patrol
+### Supervisor Patrol
 
 ```bash
-gt mail inbox                 # Check for POLECAT_DONE
-gt polecat list               # Survey workers
+co inbox                      # Check for WORKER_DONE
+co workers                    # Survey workers
 # Nudge idle, kill stuck
 ```
 
@@ -275,10 +274,10 @@ gt polecat list               # Survey workers
 ```bash
 git status                    # Check changes
 git add <files>               # Stage code
-bd sync                       # Commit beads
+wo sync                       # Commit work orders
 git commit -m "..."           # Commit code
 git push                      # Push to remote
-gt handoff -m "..."           # If incomplete
+co handoff -m "..."           # If incomplete
 ```
 
 ---
@@ -287,17 +286,17 @@ gt handoff -m "..."           # If incomplete
 
 | Variable | Description | Used By |
 |----------|-------------|---------|
-| `BD_ACTOR` | Agent identity | All agents |
-| `BEAD_ID` | Current bead | Polecats |
-| `GT_RIG` | Current rig | All agents |
-| `GT_ROLE` | Agent role | All agents |
-| `BD_DEBUG_ROUTING` | Debug prefix routing | Debugging |
+| `AGENT_ID` | Agent identity | All agents |
+| `WORK_ORDER_ID` | Current work order | Workers |
+| `CO_FACTORY` | Current factory | All agents |
+| `CO_ROLE` | Agent role | All agents |
+| `WO_DEBUG_ROUTING` | Debug prefix routing | Debugging |
 
 ### Setting Debug Mode
 
 ```bash
-BD_DEBUG_ROUTING=1 bd show <id>   # Debug routing
-GT_VERBOSE=1 gt status            # Verbose output
+WO_DEBUG_ROUTING=1 wo show <id>   # Debug routing
+CO_VERBOSE=1 co status            # Verbose output
 ```
 
 ---
@@ -320,25 +319,25 @@ GT_VERBOSE=1 gt status            # Verbose output
 ### Default (Human-readable)
 
 ```bash
-bd list
-# gt-abc123  Feature X         open    P2
-# gt-def456  Bug in login      open    P0
+wo list
+# wo-abc123  Feature X         open    P2
+# wo-def456  Bug in login      open    P0
 ```
 
 ### JSON Output
 
 ```bash
-bd list --json
-# [{"id": "gt-abc123", "title": "Feature X", ...}]
+wo list --json
+# [{"id": "wo-abc123", "title": "Feature X", ...}]
 
-bd show <id> --json
-# {"id": "gt-abc123", ...}
+wo show <id> --json
+# {"id": "wo-abc123", ...}
 ```
 
 ### JSONL Output (for piping)
 
 ```bash
-bd events list --jsonl | jq '.event_type'
+wo events list --jsonl | jq '.event_type'
 ```
 
 ---
@@ -347,16 +346,16 @@ bd events list --jsonl | jq '.event_type'
 
 ```bash
 # Count open bugs
-bd list --status=open --type=bug --json | jq length
+wo list --status=open --type=bug --json | jq length
 
-# Get IDs of blocked issues
-bd blocked --json | jq -r '.[].id'
+# Get IDs of blocked work orders
+wo blocked --json | jq -r '.[].id'
 
-# Close all completed in convoy
-gt convoy status <id> --json | jq -r '.completed[].id' | xargs bd close
+# Close all completed in sprint
+co sprint status <id> --json | jq -r '.completed[].id' | xargs wo close
 
 # Event analysis
-bd events list --since=1d --jsonl | jq -r '.event_type' | sort | uniq -c
+wo events list --since=1d --jsonl | jq -r '.event_type' | sort | uniq -c
 ```
 
 ---
@@ -373,12 +372,12 @@ bd events list --since=1d --jsonl | jq -r '.event_type' | sort | uniq -c
 ### Example Config
 
 ```toml
-[beads]
+[work_orders]
 default_priority = 2
-sync_branch = "beads-sync"
+sync_branch = "work-sync"
 
 [mail]
-default_from = "mayor"
+default_from = "ceo"
 
 [events]
 retention_days = 30

@@ -7,7 +7,7 @@
 VerMAS uses simple, proven data formats:
 - **JSONL** for append-only logs and records
 - **TOML** for configuration and templates
-- **Plain text** for hooks and simple state
+- **Plain text** for assignments and simple state
 
 All schemas are designed to be:
 - Human-readable (grep, cat, jq)
@@ -19,17 +19,17 @@ All schemas are designed to be:
 ## File Layout
 
 ```
-.beads/
+.work/
 ├── events.jsonl           # Event log (source of truth)
-├── issues.jsonl           # Bead records (projection)
+├── work_orders.jsonl      # Work order records (projection)
 ├── messages.jsonl         # Mail messages (projection)
 ├── routes.jsonl           # Prefix routing
 ├── feed.jsonl             # Real-time change feed
-├── .hook-{agent}          # Hook files (plain text)
-├── formulas/
+├── .assignment-{agent}    # Assignment files (plain text)
+├── templates/
 │   └── *.toml             # Workflow templates
-├── mols/
-│   └── *.json             # Active molecules
+├── processes/
+│   └── *.json             # Active processes
 └── evidence/
     └── *.json             # Verification evidence
 ```
@@ -45,10 +45,10 @@ Events are the source of truth. All other data is derived from events.
 ```json
 {
   "event_id": "evt-abc123def456",
-  "event_type": "bead.created",
+  "event_type": "work_order.created",
   "timestamp": "2026-01-06T12:00:00.000Z",
-  "actor": "gastown/crew/frontend",
-  "correlation_id": "conv-xyz789",
+  "actor": "project-a/teams/frontend",
+  "correlation_id": "sprint-xyz789",
   "caused_by": "evt-previous123",
   "data": {}
 }
@@ -59,34 +59,34 @@ Events are the source of truth. All other data is derived from events.
 | `event_id` | string | Yes | Unique ID: `evt-{random12}` |
 | `event_type` | string | Yes | Namespaced type (see below) |
 | `timestamp` | datetime | Yes | ISO 8601 with milliseconds |
-| `actor` | string | Yes | BD_ACTOR of emitter |
+| `actor` | string | Yes | AGENT_ID of emitter |
 | `correlation_id` | string | No | Links related events |
 | `caused_by` | string | No | Event that triggered this |
 | `data` | object | Yes | Event-specific payload |
 
 ### Event Types
 
-#### Bead Events
+#### Work Order Events
 
 ```json
-// bead.created
+// work_order.created
 {
-  "event_type": "bead.created",
+  "event_type": "work_order.created",
   "data": {
-    "bead_id": "gt-abc123",
+    "work_order_id": "wo-abc123",
     "title": "Implement feature X",
     "description": "Full description...",
     "issue_type": "feature",
     "priority": 2,
-    "created_by": "mayor"
+    "created_by": "ceo"
   }
 }
 
-// bead.updated
+// work_order.updated
 {
-  "event_type": "bead.updated",
+  "event_type": "work_order.updated",
   "data": {
-    "bead_id": "gt-abc123",
+    "work_order_id": "wo-abc123",
     "changes": {
       "title": "New title",
       "priority": 1
@@ -94,31 +94,31 @@ Events are the source of truth. All other data is derived from events.
   }
 }
 
-// bead.status_changed
+// work_order.status_changed
 {
-  "event_type": "bead.status_changed",
+  "event_type": "work_order.status_changed",
   "data": {
-    "bead_id": "gt-abc123",
+    "work_order_id": "wo-abc123",
     "from_status": "open",
     "to_status": "in_progress"
   }
 }
 
-// bead.hooked
+// work_order.assigned
 {
-  "event_type": "bead.hooked",
+  "event_type": "work_order.assigned",
   "data": {
-    "bead_id": "gt-abc123",
-    "agent": "gastown/polecats/slot0",
-    "hook_path": ".beads/.hook-gastown-polecats-slot0"
+    "work_order_id": "wo-abc123",
+    "agent": "project-a/workers/slot0",
+    "assignment_path": ".work/.assignment-project-a-workers-slot0"
   }
 }
 
-// bead.closed
+// work_order.closed
 {
-  "event_type": "bead.closed",
+  "event_type": "work_order.closed",
   "data": {
-    "bead_id": "gt-abc123",
+    "work_order_id": "wo-abc123",
     "reason": "Completed successfully"
   }
 }
@@ -132,10 +132,10 @@ Events are the source of truth. All other data is derived from events.
   "event_type": "mail.sent",
   "data": {
     "message_id": "msg-xyz789",
-    "from": "gastown/polecats/slot0",
-    "to": "gastown/witness",
-    "subject": "POLECAT_DONE",
-    "message_type": "POLECAT_DONE"
+    "from": "project-a/workers/slot0",
+    "to": "project-a/supervisor",
+    "subject": "WORKER_DONE",
+    "message_type": "WORKER_DONE"
   }
 }
 
@@ -144,7 +144,7 @@ Events are the source of truth. All other data is derived from events.
   "event_type": "mail.delivered",
   "data": {
     "message_id": "msg-xyz789",
-    "recipient": "gastown/witness"
+    "recipient": "project-a/supervisor"
   }
 }
 
@@ -153,7 +153,7 @@ Events are the source of truth. All other data is derived from events.
   "event_type": "mail.read",
   "data": {
     "message_id": "msg-xyz789",
-    "reader": "gastown/witness",
+    "reader": "project-a/supervisor",
     "read_at": "2026-01-06T12:05:00.000Z"
   }
 }
@@ -166,16 +166,16 @@ Events are the source of truth. All other data is derived from events.
 {
   "event_type": "agent.started",
   "data": {
-    "session_name": "polecat-gastown-slot0",
+    "session_name": "worker-project-a-slot0",
     "worktree": "/path/to/worktree",
-    "profile": "polecat",
-    "hooked_bead": "gt-abc123"
+    "profile": "worker",
+    "assigned_work_order": "wo-abc123"
   }
 }
 
-// agent.hook_checked (GUPP compliance)
+// agent.assignment_checked (Assignment Principle compliance)
 {
-  "event_type": "agent.hook_checked",
+  "event_type": "agent.assignment_checked",
   "data": {
     "found": true,
     "response_ms": 150,
@@ -187,7 +187,7 @@ Events are the source of truth. All other data is derived from events.
 {
   "event_type": "agent.working",
   "data": {
-    "bead_id": "gt-abc123"
+    "work_order_id": "wo-abc123"
   }
 }
 
@@ -210,43 +210,43 @@ Events are the source of truth. All other data is derived from events.
 }
 ```
 
-#### Workflow Events
+#### Process Events
 
 ```json
-// mol.created
+// process.created
 {
-  "event_type": "mol.created",
+  "event_type": "process.created",
   "data": {
-    "mol_id": "mol-abc123",
-    "formula": "mol-polecat-work",
-    "bead_id": "gt-xyz789"
+    "process_id": "proc-abc123",
+    "template": "worker-execute",
+    "work_order_id": "wo-xyz789"
   }
 }
 
-// mol.step_started
+// process.step_started
 {
-  "event_type": "mol.step_started",
+  "event_type": "process.step_started",
   "data": {
-    "mol_id": "mol-abc123",
+    "process_id": "proc-abc123",
     "step_id": "implement"
   }
 }
 
-// mol.step_completed
+// process.step_completed
 {
-  "event_type": "mol.step_completed",
+  "event_type": "process.step_completed",
   "data": {
-    "mol_id": "mol-abc123",
+    "process_id": "proc-abc123",
     "step_id": "implement",
     "status": "completed"
   }
 }
 
-// mol.completed
+// process.completed
 {
-  "event_type": "mol.completed",
+  "event_type": "process.completed",
   "data": {
-    "mol_id": "mol-abc123",
+    "process_id": "proc-abc123",
     "summary": "All steps completed successfully"
   }
 }
@@ -259,8 +259,8 @@ Events are the source of truth. All other data is derived from events.
 {
   "event_type": "verify.started",
   "data": {
-    "bead_id": "gt-abc123",
-    "mol_id": "mol-verify-xyz"
+    "work_order_id": "wo-abc123",
+    "process_id": "proc-verify-xyz"
   }
 }
 
@@ -268,7 +268,7 @@ Events are the source of truth. All other data is derived from events.
 {
   "event_type": "verify.verdict",
   "data": {
-    "bead_id": "gt-abc123",
+    "work_order_id": "wo-abc123",
     "verdict": "PASS",
     "criteria_passed": 5,
     "criteria_failed": 0,
@@ -279,13 +279,13 @@ Events are the source of truth. All other data is derived from events.
 
 ---
 
-## Bead Schema
+## Work Order Schema
 
-Beads (issues) stored in `issues.jsonl`:
+Work orders stored in `work_orders.jsonl`:
 
 ```json
 {
-  "id": "gt-abc123",
+  "id": "wo-abc123",
   "title": "Implement feature X",
   "description": "Full description with markdown...",
   "status": "open",
@@ -293,14 +293,14 @@ Beads (issues) stored in `issues.jsonl`:
   "issue_type": "feature",
   "created_at": "2026-01-06T10:00:00.000Z",
   "updated_at": "2026-01-06T12:00:00.000Z",
-  "created_by": "mayor",
-  "assignee": "gastown/polecats/slot0",
+  "created_by": "ceo",
+  "assignee": "project-a/workers/slot0",
   "dependencies": [
     {
-      "depends_on_id": "gt-dep456",
+      "depends_on_id": "wo-dep456",
       "type": "blocks",
       "created_at": "2026-01-06T10:05:00.000Z",
-      "created_by": "mayor"
+      "created_by": "ceo"
     }
   ],
   "labels": ["backend", "api"],
@@ -312,16 +312,16 @@ Beads (issues) stored in `issues.jsonl`:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `id` | string | Yes | Unique ID: `{prefix}-{hash}` or hierarchical `{prefix}-{hash}.{n}` |
+| `id` | string | Yes | Unique ID: `wo-{hash}` or hierarchical `wo-{hash}.{n}` |
 | `title` | string | Yes | Short title (max 100 chars) |
 | `description` | string | No | Markdown description |
-| `status` | enum | Yes | `open`, `in_progress`, `hooked`, `closed` |
+| `status` | enum | Yes | `open`, `in_progress`, `assigned`, `closed` |
 | `priority` | int | Yes | 0-4 (0=P0 critical, 4=P4 backlog) |
 | `issue_type` | enum | Yes | `task`, `bug`, `feature`, `epic`, `merge-request` |
 | `created_at` | datetime | Yes | ISO 8601 |
 | `updated_at` | datetime | Yes | ISO 8601 |
-| `created_by` | string | Yes | BD_ACTOR |
-| `assignee` | string | No | BD_ACTOR |
+| `created_by` | string | Yes | AGENT_ID |
+| `assignee` | string | No | AGENT_ID |
 | `dependencies` | array | No | Dependency objects |
 | `labels` | array | No | String labels |
 | `metadata` | object | No | Custom key-value pairs |
@@ -332,7 +332,7 @@ Beads (issues) stored in `issues.jsonl`:
 |--------|---------|
 | `open` | Ready to be worked |
 | `in_progress` | Being worked on |
-| `hooked` | Assigned to agent hook |
+| `assigned` | Assigned to agent |
 | `closed` | Completed |
 
 ### Priority Values
@@ -364,16 +364,16 @@ Messages stored in `messages.jsonl`:
 ```json
 {
   "id": "msg-xyz789",
-  "from": "gastown/polecats/slot0",
-  "to": "gastown/witness",
-  "subject": "POLECAT_DONE",
-  "body": "Work completed for bead gt-abc123",
-  "message_type": "POLECAT_DONE",
+  "from": "project-a/workers/slot0",
+  "to": "project-a/supervisor",
+  "subject": "WORKER_DONE",
+  "body": "Work completed for work order wo-abc123",
+  "message_type": "WORKER_DONE",
   "timestamp": "2026-01-06T12:00:00.000Z",
   "read_at": null,
   "priority": "normal",
   "metadata": {
-    "bead_id": "gt-abc123"
+    "work_order_id": "wo-abc123"
   }
 }
 ```
@@ -383,8 +383,8 @@ Messages stored in `messages.jsonl`:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `id` | string | Yes | Unique ID: `msg-{random}` |
-| `from` | string | Yes | Sender BD_ACTOR |
-| `to` | string | Yes | Recipient BD_ACTOR |
+| `from` | string | Yes | Sender AGENT_ID |
+| `to` | string | Yes | Recipient AGENT_ID |
 | `subject` | string | Yes | Message subject |
 | `body` | string | Yes | Message content |
 | `message_type` | enum | No | Structured type |
@@ -397,20 +397,20 @@ Messages stored in `messages.jsonl`:
 
 | Type | From | To | Purpose |
 |------|------|----|---------|
-| `POLECAT_DONE` | Polecat | Witness | Work completed |
-| `MERGE_READY` | Witness | Refinery | Ready for merge |
-| `MERGED` | Refinery | Author | Successfully merged |
-| `REWORK_REQUEST` | Refinery | Author | Changes needed |
-| `NUDGE` | Witness | Polecat | Wake up idle |
-| `HELP` | Any | Witness/Mayor | Request assistance |
+| `WORKER_DONE` | Worker | Supervisor | Work completed |
+| `READY_FOR_QA` | Supervisor | QA | Ready for merge |
+| `MERGED` | QA | Author | Successfully merged |
+| `REWORK_REQUEST` | QA | Author | Changes needed |
+| `NUDGE` | Supervisor | Worker | Wake up idle |
+| `HELP` | Any | Supervisor/CEO | Request assistance |
 | `HANDOFF` | Any | Self | Session continuity |
-| `ESCALATION` | Any | Mayor | Problem report |
+| `ESCALATION` | Any | CEO | Problem report |
 
 ---
 
-## Hook Schema
+## Assignment Schema
 
-Hooks are plain text files: `.beads/.hook-{agent-id}`
+Assignments are plain text files: `.work/.assignment-{agent-id}`
 
 ```
 {type}:{reference_id}
@@ -419,46 +419,46 @@ Hooks are plain text files: `.beads/.hook-{agent-id}`
 ### Examples
 
 ```
-bead:gt-abc123
+work_order:wo-abc123
 mail:msg-xyz789
-mol:mol-verify-def
+process:proc-verify-def
 ```
 
-### Hook Types
+### Assignment Types
 
 | Type | Reference | Purpose |
 |------|-----------|---------|
-| `bead` | Bead ID | Work assignment |
+| `work_order` | Work order ID | Work assignment |
 | `mail` | Message ID | Handoff instructions |
-| `mol` | Molecule ID | Workflow continuation |
+| `process` | Process ID | Workflow continuation |
 
 ### Agent ID in Filename
 
 Agent ID with `/` replaced by `-`:
-- `gastown/polecats/slot0` → `.hook-gastown-polecats-slot0`
-- `mayor` → `.hook-mayor`
+- `project-a/workers/slot0` → `.assignment-project-a-workers-slot0`
+- `ceo` → `.assignment-ceo`
 
 ---
 
-## Formula Schema (TOML)
+## Template Schema (TOML)
 
-Formulas define workflow templates in `.beads/formulas/*.toml`:
+Templates define workflow definitions in `.work/templates/*.toml`:
 
 ```toml
-# mol-polecat-work.formula.toml
+# worker-execute.toml
 
-formula = "mol-polecat-work"
-description = "Execute assigned bead to completion"
+template = "worker-execute"
+description = "Execute assigned work order to completion"
 version = 1
 
 [[steps]]
 id = "understand"
 title = "Understand the task"
 description = """
-Read the bead details and plan your approach.
+Read the work order details and plan your approach.
 
 ```bash
-bd show $BEAD_ID
+wo show $WORK_ORDER_ID
 ```
 
 Understand the requirements before starting.
@@ -499,16 +499,16 @@ Commit, push, and signal completion.
 git add .
 git commit -m "Implement feature"
 git push
-gt polecat done
+co worker done
 ```
 """
 ```
 
-### Formula Fields
+### Template Fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `formula` | string | Yes | Unique formula name |
+| `template` | string | Yes | Unique template name |
 | `description` | string | Yes | What this workflow does |
 | `version` | int | Yes | Schema version |
 | `steps` | array | Yes | Workflow steps |
@@ -524,16 +524,16 @@ gt polecat done
 
 ---
 
-## Molecule Schema (JSON)
+## Process Schema (JSON)
 
-Active molecules stored in `.beads/mols/{id}.json`:
+Active processes stored in `.work/processes/{id}.json`:
 
 ```json
 {
-  "id": "mol-abc123",
-  "formula": "mol-polecat-work",
-  "bead_id": "gt-xyz789",
-  "state": "liquid",
+  "id": "proc-abc123",
+  "template": "worker-execute",
+  "work_order_id": "wo-xyz789",
+  "state": "active",
   "created_at": "2026-01-06T10:00:00.000Z",
   "steps": [
     {
@@ -564,14 +564,14 @@ Active molecules stored in `.beads/mols/{id}.json`:
 }
 ```
 
-### Molecule Fields
+### Process Fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `id` | string | Yes | Unique molecule ID |
-| `formula` | string | Yes | Source formula name |
-| `bead_id` | string | No | Attached bead (if any) |
-| `state` | enum | Yes | `solid`, `liquid`, `vapor` |
+| `id` | string | Yes | Unique process ID |
+| `template` | string | Yes | Source template name |
+| `work_order_id` | string | No | Attached work order (if any) |
+| `state` | enum | Yes | `ready`, `active`, `archive` |
 | `created_at` | datetime | Yes | When instantiated |
 | `steps` | array | Yes | Step instances |
 
@@ -591,21 +591,21 @@ Active molecules stored in `.beads/mols/{id}.json`:
 
 ## Route Schema
 
-Routes map ID prefixes to beads locations in `routes.jsonl`:
+Routes map ID prefixes to work locations in `routes.jsonl`:
 
 ```json
-{"prefix": "gt", "path": "/path/to/gastown/.beads", "rig": "gastown"}
-{"prefix": "hq", "path": "/path/to/town/.beads", "rig": null}
-{"prefix": "pa", "path": "/path/to/project-a/.beads", "rig": "project-a"}
+{"prefix": "wo", "path": "/path/to/project-a/.work", "factory": "project-a"}
+{"prefix": "hq", "path": "/path/to/company/.work", "factory": null}
+{"prefix": "pa", "path": "/path/to/project-a/.work", "factory": "project-a"}
 ```
 
 ### Route Fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `prefix` | string | Yes | ID prefix (e.g., `gt`) |
-| `path` | string | Yes | Absolute path to .beads/ |
-| `rig` | string | No | Rig name (null for town-level) |
+| `prefix` | string | Yes | ID prefix (e.g., `wo`) |
+| `path` | string | Yes | Absolute path to .work/ |
+| `factory` | string | No | Factory name (null for company-level) |
 
 ---
 
@@ -619,10 +619,10 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-class BeadStatus(str, Enum):
+class WorkOrderStatus(str, Enum):
     open = "open"
     in_progress = "in_progress"
-    hooked = "hooked"
+    assigned = "assigned"
     closed = "closed"
 
 class IssueType(str, Enum):
@@ -638,11 +638,11 @@ class Dependency(BaseModel):
     created_at: datetime
     created_by: str
 
-class Bead(BaseModel):
+class WorkOrder(BaseModel):
     id: str
     title: str
     description: str = ""
-    status: BeadStatus = BeadStatus.open
+    status: WorkOrderStatus = WorkOrderStatus.open
     priority: int = Field(ge=0, le=4, default=2)
     issue_type: IssueType
     created_at: datetime
@@ -661,6 +661,6 @@ class Bead(BaseModel):
 - [EVENTS.md](./EVENTS.md) - Event sourcing patterns
 - [CLI.md](./CLI.md) - Commands that use these schemas
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - System design
-- [HOOKS.md](./HOOKS.md) - Hook file format
-- [WORKFLOWS.md](./WORKFLOWS.md) - Formula and molecule schemas
+- [HOOKS.md](./HOOKS.md) - Assignment file format
+- [WORKFLOWS.md](./WORKFLOWS.md) - Template and process schemas
 - [GO-VS-PYTHON.md](./GO-VS-PYTHON.md) - Implementation patterns

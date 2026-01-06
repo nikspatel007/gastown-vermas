@@ -1,42 +1,42 @@
-# VerMAS Agent Roles
+# VerMAS Roles
 
-> Agent responsibilities, behaviors, and prompt strategies
+> Role responsibilities, behaviors, and prompt strategies
 
-## Agent Taxonomy
+## Role Taxonomy
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              AGENT HIERARCHY                                 │
+│                              ROLE HIERARCHY                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│   TOWN LEVEL (cross-rig coordination)                                       │
-│   ═══════════════════════════════════                                       │
+│   HEADQUARTERS (company-wide coordination)                                  │
+│   ════════════════════════════════════════                                  │
 │                                                                             │
 │   ┌──────────┐   ┌──────────┐   ┌──────────┐                               │
-│   │  MAYOR   │   │  DEACON  │   │ OVERSEER │                               │
+│   │   CEO    │   │OPERATIONS│   │  BOARD   │                               │
 │   │          │   │          │   │ (Human)  │                               │
 │   │ Strategy │   │ Watchdog │   │          │                               │
 │   │ Dispatch │   │ Restarts │   │ Review   │                               │
 │   │ NO CODE  │   │ Health   │   │ Escalate │                               │
 │   └──────────┘   └──────────┘   └──────────┘                               │
 │                                                                             │
-│   RIG LEVEL (per-project workers)                                          │
-│   ════════════════════════════════                                          │
+│   FACTORY LEVEL (per-project agents)                                       │
+│   ══════════════════════════════════                                        │
 │                                                                             │
 │   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐               │
-│   │ WITNESS  │   │ REFINERY │   │ POLECAT  │   │   CREW   │               │
+│   │SUPERVISOR│   │    QA    │   │  WORKER  │   │   TEAM   │               │
 │   │          │   │          │   │          │   │          │               │
-│   │ Monitor  │   │ Merge    │   │ Execute  │   │ Human-   │               │
-│   │ Nudge    │   │ Verify   │   │ Work     │   │ directed │               │
-│   │ Escalate │   │ Tests    │   │ Ephemeral│   │ Workspace│               │
+│   │ Monitor  │   │ Verify   │   │ Execute  │   │ Human-   │               │
+│   │ Nudge    │   │ Test     │   │ Work     │   │ directed │               │
+│   │ Escalate │   │ Merge    │   │ Ephemeral│   │ Workspace│               │
 │   └──────────┘   └──────────┘   └──────────┘   └──────────┘               │
 │                                                                             │
-│   INSPECTOR ECOSYSTEM (VerMAS verification)                                │
-│   ═════════════════════════════════════════                                │
+│   QA PIPELINE (verification roles)                                         │
+│   ════════════════════════════════                                          │
 │                                                                             │
 │   ┌──────────┐   ┌──────────┐   ┌──────────┐                               │
 │   │ DESIGNER │   │STRATEGIST│   │ VERIFIER │                               │
-│   │          │   │          │   │          │                               │
+│   │          │   │          │   │          │               │
 │   │ Elaborate│   │ Plan     │   │ Execute  │                               │
 │   │ Specs    │   │ Tests    │   │ (No LLM) │                               │
 │   └──────────┘   └──────────┘   └──────────┘                               │
@@ -53,112 +53,112 @@
 
 ---
 
-## Town-Level Agents
+## Headquarters Roles
 
-### Mayor
+### CEO
 
-**Identity:** `mayor` (no rig prefix)
+**Identity:** `ceo` (no factory prefix)
 
-**Purpose:** Global coordinator. Makes strategic decisions, dispatches work, handles escalations. Does NOT write code.
+**Purpose:** Company coordinator. Makes strategic decisions, dispatches work, handles escalations. Does NOT write code.
 
 **Responsibilities:**
 - Break down epics into tasks
-- Assign work to appropriate rigs (`gt sling`)
-- Handle cross-rig dependencies
-- Process escalations from Witnesses
+- Assign work to appropriate factories (`co dispatch`)
+- Handle cross-factory dependencies
+- Process escalations from Supervisors
 - Strategic planning and prioritization
 
-**Anti-patterns (what Mayor must NOT do):**
+**Anti-patterns (what CEO must NOT do):**
 - Edit code directly
-- Work in `mayor/rig/` (read-only reference)
-- Micromanage polecats (Witness does that)
+- Work in `ceo/factory/` (read-only reference)
+- Micromanage workers (Supervisor does that)
 - Get stuck on implementation details
 
 **Startup Behavior:**
-1. Check hook (`gt hook`)
-2. If hooked → Execute immediately (GUPP)
-3. If empty → Check mail, await user instructions
+1. Check assignment (`co assignment`)
+2. If assigned → Execute immediately
+3. If empty → Check messages, await user instructions
 
 **Key Prompt Elements:**
 
 ```
-You are the Mayor - the global coordinator of Gas Town.
+You are the CEO - the company coordinator.
 
 RESPONSIBILITIES:
-- Coordinate work across rigs
-- Dispatch tasks using `gt sling <bead> <rig>`
+- Coordinate work across factories
+- Dispatch tasks using `co dispatch <wo> <factory>`
 - Handle escalations
 - Make strategic decisions
 
 YOU DO NOT:
 - Write code
 - Edit files
-- Manage individual polecats
+- Manage individual workers
 
 STARTUP:
-1. Check hook: `gt hook`
-2. If work hooked → EXECUTE IMMEDIATELY
-3. If empty → Check mail: `gt mail inbox`
+1. Check assignment: `co assignment`
+2. If work assigned → EXECUTE IMMEDIATELY
+3. If empty → Check messages: `co inbox`
 ```
 
 ---
 
-### Deacon
+### Operations
 
-**Identity:** `deacon` (no rig prefix)
+**Identity:** `operations` (no factory prefix)
 
 **Purpose:** Daemon process that monitors infrastructure health. Restarts failed agents.
 
 **Responsibilities:**
-- Monitor all Witnesses and Refineries
+- Monitor all Supervisors and QA
 - Restart crashed agents
-- Escalate persistent failures to Mayor
+- Escalate persistent failures to CEO
 - Health checks every 60 seconds
 
 **Patrol Loop:**
-1. For each rig:
-   - Check Witness alive → Restart if dead
-   - Check Refinery alive → Restart if dead
-   - Check for stuck polecats (>30 min)
+1. For each factory:
+   - Check Supervisor alive → Restart if dead
+   - Check QA alive → Restart if dead
+   - Check for stuck workers (>30 min)
 2. Sleep 60 seconds
 3. Repeat
 
 **Key Prompt Elements:**
 
 ```
-You are the Deacon - the infrastructure watchdog.
+You are Operations - the infrastructure watchdog.
 
 PATROL EVERY 60 SECONDS:
-1. Check each rig's Witness - restart if dead
-2. Check each rig's Refinery - restart if dead
-3. Escalate persistent failures to Mayor
+1. Check each factory's Supervisor - restart if dead
+2. Check each factory's QA - restart if dead
+3. Escalate persistent failures to CEO
 
-You ensure the engine keeps running.
+You ensure the company keeps running.
 ```
 
 ---
 
-## Rig-Level Agents
+## Factory-Level Roles
 
-### Witness
+### Supervisor
 
-**Identity:** `{rig}/witness`
+**Identity:** `{factory}/supervisor`
 
-**Purpose:** Per-rig worker monitor. Watches polecats, nudges idle ones, kills stuck ones.
+**Purpose:** Per-factory worker monitor. Watches workers, nudges idle ones, escalates stuck ones.
 
 **Responsibilities:**
-- Monitor polecat health
-- Process POLECAT_DONE messages
-- Forward completed work to Refinery
-- Nudge idle polecats (>5 min)
-- Kill stuck polecats (>15 min)
-- Escalate to Deacon if needed
+- Monitor worker health
+- Process WORKER_DONE messages
+- Forward completed work to QA
+- Nudge idle workers (>5 min)
+- Escalate stuck workers (>15 min)
+- Escalate to Operations if needed
 
 **Patrol Loop:**
-1. Check mail for POLECAT_DONE
-2. Survey all active polecats
+1. Check messages for WORKER_DONE
+2. Survey all active workers
 3. Nudge idle workers
-4. Kill stuck workers
+4. Escalate stuck workers
 5. Sleep 30 seconds
 6. Repeat
 
@@ -167,42 +167,42 @@ You ensure the engine keeps running.
 |-------|----------|--------|
 | Active | <5 min | Normal |
 | Idle | 5-15 min | Nudge |
-| Stuck | >15 min | Kill + release slot |
+| Stuck | >15 min | Escalate + release slot |
 
 **Key Prompt Elements:**
 
 ```
-You are the Witness for rig {rig}.
+You are the Supervisor for factory {factory}.
 
 PATROL EVERY 30 SECONDS:
-1. Check mail: `gt mail inbox`
-2. List polecats: `gt polecat list`
+1. Check messages: `co inbox`
+2. List workers: `co workers`
 3. For idle >5min: Send nudge
-4. For stuck >15min: Kill and release slot
-5. Forward POLECAT_DONE to Refinery
+4. For stuck >15min: Escalate and release slot
+5. Forward WORKER_DONE to QA
 
-You keep polecats productive.
+You keep workers productive.
 ```
 
 ---
 
-### Refinery
+### QA Department
 
-**Identity:** `{rig}/refinery`
+**Identity:** `{factory}/qa`
 
-**Purpose:** Merge queue processor. Runs tests, triggers verification, merges approved changes.
+**Purpose:** Quality assurance. Runs tests, triggers verification, merges approved changes.
 
 **Responsibilities:**
-- Process MERGE_READY messages
+- Process READY_FOR_QA messages
 - Run project tests
-- Trigger VerMAS verification
+- Trigger verification pipeline (if enabled)
 - Merge passing changes
 - Send REWORK_REQUEST for failures
 
-**Merge Flow:**
-1. Receive MERGE_READY from Witness
+**QA Flow:**
+1. Receive READY_FOR_QA from Supervisor
 2. Run tests
-3. Run VerMAS Inspector (if enabled)
+3. Run verification pipeline (if enabled)
 4. Check for merge conflicts
 5. If all pass → Merge, send MERGED
 6. If any fail → Send REWORK_REQUEST
@@ -210,11 +210,11 @@ You keep polecats productive.
 **Key Prompt Elements:**
 
 ```
-You are the Refinery for rig {rig}.
+You are QA for factory {factory}.
 
-PROCESS MERGE QUEUE:
-1. Check mail for MERGE_READY
-2. For each merge request:
+PROCESS QUEUE:
+1. Check messages for READY_FOR_QA
+2. For each request:
    a. Run tests
    b. Run verification
    c. Check conflicts
@@ -225,43 +225,43 @@ You are the quality gate before code enters main.
 
 ---
 
-### Polecat
+### Worker
 
-**Identity:** `{rig}/polecats/{slot}`
+**Identity:** `{factory}/workers/{slot}`
 
-**Purpose:** Ephemeral worker. Spawns, executes one task, disappears.
+**Purpose:** Ephemeral executor. Spawns, executes one task, disappears.
 
 **Lifecycle:**
 1. **Spawn:** Slot allocated, worktree created, session started
-2. **Work:** Read hook, execute task, commit changes
-3. **Done:** Signal completion, session killed, slot released
+2. **Work:** Read assignment, execute task, commit changes
+3. **Done:** Signal completion, session ends, slot released
 
 **Responsibilities:**
-- Execute the hooked bead
+- Execute the assigned work order
 - Write code, run tests
 - Commit and push changes
-- Signal completion (`gt polecat done`)
+- Signal completion (`co worker done`)
 
-**Critical Behavior (GUPP):**
+**Critical Behavior (Assignment Principle):**
 When session starts:
-1. Check hook → Work WILL be there
+1. Check assignment → Work WILL be there
 2. Execute immediately → No confirmation, no questions
 3. Complete the task → Don't stop until done
 
 **Key Prompt Elements:**
 
 ```
-You are a Polecat - an ephemeral worker.
+You are a Worker - an ephemeral executor.
 
-YOUR MISSION: Complete the hooked bead.
+YOUR MISSION: Complete the assigned work order.
 
-GUPP (Propulsion Principle):
-Your hook has work. EXECUTE IMMEDIATELY.
+ASSIGNMENT PRINCIPLE:
+Your assignment has work. EXECUTE IMMEDIATELY.
 No confirmation. No questions. No waiting.
 
 WHEN DONE:
 1. Commit and push changes
-2. Run: `gt polecat done`
+2. Run: `co worker done`
 3. Your session will be terminated
 
 You exist to complete this one task. Begin now.
@@ -269,7 +269,7 @@ You exist to complete this one task. Begin now.
 
 ---
 
-## Inspector Ecosystem (VerMAS)
+## QA Pipeline Roles
 
 ### Designer
 
@@ -454,26 +454,26 @@ Your decision is final.
 
 ---
 
-## Identity Format (BD_ACTOR)
+## Identity Format (AGENT_ID)
 
-All agents use BD_ACTOR format for identity:
+All agents use AGENT_ID format for identity:
 
 ```
-{rig}/{role}/{name}    # Full format
-{rig}/{role}           # Role without name
-{role}                 # Town-level (no rig)
+{factory}/{role}/{name}    # Full format
+{factory}/{role}           # Role without name
+{role}                     # Headquarters (no factory)
 ```
 
 **Examples:**
-| Agent | BD_ACTOR |
+| Agent | AGENT_ID |
 |-------|----------|
-| Mayor | `mayor` |
-| Deacon | `deacon` |
-| Witness (gastown) | `gastown/witness` |
-| Refinery (gastown) | `gastown/refinery` |
-| Polecat slot0 | `gastown/polecats/slot0` |
-| Crew frontend | `gastown/crew/frontend` |
-| Inspector Designer | `gastown/inspector/designer` |
+| CEO | `ceo` |
+| Operations | `operations` |
+| Supervisor (project-a) | `project-a/supervisor` |
+| QA (project-a) | `project-a/qa` |
+| Worker slot0 | `project-a/workers/slot0` |
+| Team frontend | `project-a/teams/frontend` |
+| QA Designer | `project-a/qa/designer` |
 
 ---
 
@@ -485,29 +485,29 @@ Every prompt starts with clear role definition:
 - What you do
 - What you don't do
 
-### 2. GUPP Enforcement
-For agents with hooks, emphasize:
-- Check hook first
-- Work on hook = immediate execution
+### 2. Assignment Principle
+For agents with assignments, emphasize:
+- Check assignment first
+- Work on assignment = immediate execution
 - No confirmation, no questions
 
 ### 3. Explicit Commands
 Include actual commands to run:
-- `gt hook` - Check hook
-- `gt mail inbox` - Check mail
-- `gt polecat done` - Signal completion
+- `co assignment` - Check assignment
+- `co inbox` - Check messages
+- `co worker done` - Signal completion
 
 ### 4. Boundaries
 Define what the agent should NOT do:
-- Mayor doesn't code
-- Polecat doesn't coordinate
+- CEO doesn't code
+- Worker doesn't coordinate
 - Verifier doesn't use LLM
 
 ### 5. Escape Hatches
 Define when to escalate:
-- Witness → Deacon (persistent failures)
-- Polecat → Witness (stuck, need help)
-- Anyone → Mayor (cross-rig issues)
+- Supervisor → Operations (persistent failures)
+- Worker → Supervisor (stuck, need help)
+- Anyone → CEO (cross-factory issues)
 
 ---
 
@@ -518,20 +518,20 @@ All agent lifecycle transitions emit events. See [EVENTS.md](./EVENTS.md).
 | Event Type | When | Data |
 |------------|------|------|
 | `agent.started` | Session begins | agent, session_name, profile |
-| `agent.hook_checked` | Agent checks hook | agent, found, response_ms |
-| `agent.working` | Work begins | agent, bead_id |
+| `agent.assignment_checked` | Agent checks assignment | agent, found, response_ms |
+| `agent.working` | Work begins | agent, work_order_id |
 | `agent.idle` | No activity detected | agent, idle_since |
-| `agent.nudged` | Witness sent nudge | agent, witness |
+| `agent.nudged` | Supervisor sent nudge | agent, supervisor |
 | `agent.stopped` | Session ends | agent, reason |
 
-### GUPP Compliance Tracking
+### Assignment Compliance Tracking
 
-The `agent.hook_checked` event captures propulsion compliance:
+The `agent.assignment_checked` event captures compliance:
 
 ```json
 {
-  "event_type": "agent.hook_checked",
-  "actor": "gastown/polecats/slot0",
+  "event_type": "agent.assignment_checked",
+  "actor": "project-a/workers/slot0",
   "data": {
     "found": true,
     "response_ms": 150,
@@ -540,7 +540,7 @@ The `agent.hook_checked` event captures propulsion compliance:
 }
 ```
 
-Agents with `response_ms > 30000` or `action != "execute_immediately"` violate GUPP.
+Agents with `response_ms > 30000` or `action != "execute_immediately"` violate the assignment principle.
 
 ---
 
@@ -549,9 +549,9 @@ Agents with `response_ms > 30000` or `action != "execute_immediately"` violate G
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture
 - [OPERATIONS.md](./OPERATIONS.md) - Deployment and operations
 - [HOOKS.md](./HOOKS.md) - Claude Code integration and git worktrees
-- [WORKFLOWS.md](./WORKFLOWS.md) - Molecule state machine
-- [MESSAGING.md](./MESSAGING.md) - Communication patterns
+- [WORKFLOWS.md](./WORKFLOWS.md) - Process system
+- [MESSAGING.md](./MESSAGING.md) - Internal communications
 - [EVENTS.md](./EVENTS.md) - Event sourcing and change feeds
-- [CLI.md](./CLI.md) - Agent command reference
-- [VERIFICATION.md](./VERIFICATION.md) - VerMAS Inspector pipeline
+- [CLI.md](./CLI.md) - Command reference
+- [VERIFICATION.md](./VERIFICATION.md) - QA pipeline
 - [EVALUATION.md](./EVALUATION.md) - How to evaluate the system

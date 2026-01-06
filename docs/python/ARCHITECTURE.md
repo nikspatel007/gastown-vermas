@@ -10,7 +10,7 @@
 2. **Shared data formats** - Interoperable with Go implementation via JSONL/TOML
 3. **Tmux isolation** - Each agent runs in its own tmux session
 4. **Git-backed state** - All persistent state lives in git
-5. **Hook-driven execution** - GUPP: "If your hook has work, RUN IT"
+5. **Assignment-driven execution** - "If you have an assignment, EXECUTE IT"
 6. **Event sourced** - All state derived from append-only event logs
 
 ## Proven Technology Stack
@@ -134,7 +134,7 @@ Any LLM CLI tool can be used if it:
 ### Configuring Backend
 
 ```toml
-# .beads/config.toml
+# .work/config.toml
 
 [llm]
 # Default backend for all agents
@@ -142,18 +142,18 @@ backend = "claude"
 command = "claude --profile {role}"
 
 # Per-role overrides
-[llm.roles.polecat]
+[llm.roles.worker]
 backend = "claude"
-command = "claude --profile polecat"
+command = "claude --profile worker"
 
 [llm.roles.verifier]
 # Verifier uses no LLM - just shell execution
 backend = "none"
 
-[llm.roles.inspector]
+[llm.roles.auditor]
 # Use different model for verification
 backend = "claude"
-command = "claude --profile inspector --model opus"
+command = "claude --profile auditor --model opus"
 ```
 
 ### Why CLI-Based?
@@ -170,39 +170,39 @@ command = "claude --profile inspector --model opus"
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              TOWN (Workspace Root)                           │
+│                              COMPANY (Workspace Root)                        │
 │                                                                             │
 │   ┌─────────────────────────────────────────────────────────────────────┐  │
 │   │                         COORDINATION LAYER                          │  │
 │   │                                                                     │  │
-│   │   Mayor ◄────────────────────────────────────────────► Deacon      │  │
-│   │   (Human-directed)                                    (Daemon)     │  │
+│   │   CEO ◄────────────────────────────────────────────► Operations    │  │
+│   │   (Human-directed)                                   (Daemon)      │  │
 │   │                                                                     │  │
-│   │   - Cross-rig decisions                              - Health mon  │  │
-│   │   - Strategic planning                               - Restarts    │  │
-│   │   - Escalation handling                              - Watchdog    │  │
+│   │   - Cross-factory decisions                         - Health mon   │  │
+│   │   - Strategic planning                              - Restarts     │  │
+│   │   - Escalation handling                             - Watchdog     │  │
 │   │                                                                     │  │
 │   └─────────────────────────────────────────────────────────────────────┘  │
 │                                    │                                        │
 │                    ┌───────────────┴───────────────┐                       │
 │                    ▼                               ▼                        │
 │   ┌────────────────────────────┐   ┌────────────────────────────┐         │
-│   │         RIG A              │   │         RIG B              │         │
+│   │       FACTORY A            │   │       FACTORY B            │         │
 │   │                            │   │                            │         │
-│   │   ┌────────┐ ┌─────────┐  │   │   ┌────────┐ ┌─────────┐  │         │
-│   │   │Witness │ │Refinery │  │   │   │Witness │ │Refinery │  │         │
-│   │   └───┬────┘ └────┬────┘  │   │   └───┬────┘ └────┬────┘  │         │
-│   │       │           │       │   │       │           │       │         │
-│   │       ▼           ▼       │   │       ▼           ▼       │         │
+│   │   ┌──────────┐ ┌───────┐  │   │   ┌──────────┐ ┌───────┐  │         │
+│   │   │Supervisor│ │  QA   │  │   │   │Supervisor│ │  QA   │  │         │
+│   │   └────┬─────┘ └───┬───┘  │   │   └────┬─────┘ └───┬───┘  │         │
+│   │        │           │      │   │        │           │      │         │
+│   │        ▼           ▼      │   │        ▼           ▼      │         │
 │   │   ┌─────────────────┐     │   │   ┌─────────────────┐     │         │
-│   │   │    Polecats     │     │   │   │    Polecats     │     │         │
+│   │   │     Workers     │     │   │   │     Workers     │     │         │
 │   │   │  slot0..slot4   │     │   │   │  slot0..slot4   │     │         │
 │   │   └─────────────────┘     │   │   └─────────────────┘     │         │
 │   │                            │   │                            │         │
-│   │   .beads/ (rig-level)     │   │   .beads/ (rig-level)     │         │
+│   │   .work/ (factory-level)  │   │   .work/ (factory-level)  │         │
 │   └────────────────────────────┘   └────────────────────────────┘         │
 │                                                                             │
-│   .beads/ (town-level: mayor mail, HQ coordination)                        │
+│   .work/ (company-level: CEO mail, HQ coordination)                        │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -211,21 +211,21 @@ command = "claude --profile inspector --model opus"
 
 ## Data Flow
 
-### Work Assignment (Sling)
+### Work Assignment (Dispatch)
 
 ```
-Mayor                    Rig                     Polecat
+CEO                     Factory                  Worker
   │                       │                        │
-  │  1. gt sling bead rig │                        │
+  │  1. co dispatch wo factory                     │
   │──────────────────────▶│                        │
   │                       │                        │
   │                       │  2. Allocate slot      │
   │                       │  3. Create worktree    │
-  │                       │  4. Write hook file    │
+  │                       │  4. Write assignment   │
   │                       │  5. Start tmux session │
   │                       │───────────────────────▶│
   │                       │                        │
-  │                       │                        │  6. GUPP: Check hook
+  │                       │                        │  6. Check assignment
   │                       │                        │  7. Find work
   │                       │                        │  8. EXECUTE
   │                       │                        │
@@ -234,14 +234,14 @@ Mayor                    Rig                     Polecat
 ### Work Completion
 
 ```
-Polecat                 Witness                Refinery
+Worker                 Supervisor               QA
   │                        │                       │
-  │  1. gt polecat done    │                       │
-  │  (sends POLECAT_DONE)  │                       │
+  │  1. co worker done     │                       │
+  │  (sends WORKER_DONE)   │                       │
   │───────────────────────▶│                       │
   │                        │                       │
   │                        │  2. Validate work     │
-  │                        │  3. Send MERGE_READY  │
+  │                        │  3. Send READY_FOR_QA │
   │                        │──────────────────────▶│
   │                        │                       │
   │                        │                       │  4. Run tests
@@ -257,25 +257,25 @@ Polecat                 Witness                Refinery
 
 ## Storage Architecture
 
-### Two-Level Beads
+### Two-Level Work Orders
 
 | Level | Location | Purpose | Git Behavior |
 |-------|----------|---------|--------------|
-| **Town** | `~/.beads/` | Mayor mail, HQ coordination | Commits to main |
-| **Rig** | `<rig>/.beads/` | Project issues, workflows | Uses beads-sync branch |
+| **Company** | `~/.work/` | CEO mail, HQ coordination | Commits to main |
+| **Factory** | `<factory>/.work/` | Project work orders, workflows | Uses work-sync branch |
 
 ### File Types
 
 | File | Format | Contents |
 |------|--------|----------|
 | `events.jsonl` | JSONL | **Event log (source of truth)** |
-| `issues.jsonl` | JSONL | Beads - projection of events |
+| `work_orders.jsonl` | JSONL | Work orders - projection of events |
 | `messages.jsonl` | JSONL | Mail - projection of events |
 | `feed.jsonl` | JSONL | Real-time change feed |
-| `routes.jsonl` | JSONL | Prefix → rig routing |
-| `formulas/*.toml` | TOML | Workflow templates |
-| `mols/*.json` | JSON | Active workflow instances |
-| `.hook-{agent}` | Plain text | Current hook assignment |
+| `routes.jsonl` | JSONL | Prefix → factory routing |
+| `templates/*.toml` | TOML | Workflow templates |
+| `processes/*.json` | JSON | Active workflow instances |
+| `.assignment-{agent}` | Plain text | Current assignment |
 
 ### Event Sourcing Model
 
@@ -284,7 +284,7 @@ Polecat                 Witness                Refinery
 │                          EVENT SOURCING MODEL                                │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│   Commands (gt, bd)                                                         │
+│   Commands (co, wo)                                                         │
 │        │                                                                    │
 │        ▼                                                                    │
 │   ┌─────────────┐                                                           │
@@ -294,13 +294,13 @@ Polecat                 Witness                Refinery
 │          │                                                                  │
 │          │ project                                                          │
 │          ▼                                                                  │
-│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                    │
-│   │  issues.    │    │ messages.   │    │  feed.      │                    │
-│   │  jsonl      │    │ jsonl       │    │  jsonl      │                    │
-│   │             │    │             │    │             │                    │
-│   │ (current    │    │ (mailbox    │    │ (real-time  │                    │
-│   │  state)     │    │  state)     │    │  stream)    │                    │
-│   └─────────────┘    └─────────────┘    └─────────────┘                    │
+│   ┌──────────────┐   ┌─────────────┐    ┌─────────────┐                    │
+│   │ work_orders. │   │ messages.   │    │  feed.      │                    │
+│   │ jsonl        │   │ jsonl       │    │  jsonl      │                    │
+│   │              │   │             │    │             │                    │
+│   │ (current     │   │ (mailbox    │    │ (real-time  │                    │
+│   │  state)      │   │  state)     │    │  stream)    │                    │
+│   └──────────────┘   └─────────────┘    └─────────────┘                    │
 │                                                                             │
 │   All state is derived from events. Events are immutable.                  │
 │   See EVENTS.md for full event sourcing documentation.                     │
@@ -310,12 +310,12 @@ Polecat                 Witness                Refinery
 
 ### Prefix-Based Routing
 
-Every bead ID has a prefix (e.g., `gt-abc12`). The router maps prefixes to rigs:
+Every work order ID has a prefix (e.g., `wo-abc12`). The router maps prefixes to factories:
 
 ```
-gt-* → gastown/.beads/
-hq-* → town/.beads/ (mayor level)
-pa-* → project-a/.beads/
+wo-*  → default-factory/.work/
+hq-*  → company/.work/ (CEO level)
+pa-*  → project-a/.work/
 ```
 
 ---
@@ -325,32 +325,32 @@ pa-* → project-a/.beads/
 ### Tmux Session Naming
 
 ```
-{role}-{rig}           # Witness, Refinery
-{role}-{rig}-{slot}    # Polecats
-mayor                  # Town-level Mayor
-deacon                 # Town-level Deacon
+{role}-{factory}           # Supervisor, QA
+{role}-{factory}-{slot}    # Workers
+ceo                        # Company-level CEO
+operations                 # Company-level Operations
 ```
 
 Examples:
-- `witness-gastown`
-- `refinery-gastown`
-- `polecat-gastown-slot0`
-- `mayor`
+- `supervisor-project-a`
+- `qa-project-a`
+- `worker-project-a-slot0`
+- `ceo`
 
 ### Session Environment
 
 Each session sets:
-- `BD_ACTOR` - Agent identity (e.g., `gastown/polecats/slot0`)
-- `BEAD_ID` - Assigned work (for polecats)
-- Working directory - Appropriate worktree or rig path
+- `AGENT_ID` - Agent identity (e.g., `project-a/workers/slot0`)
+- `WORK_ORDER_ID` - Assigned work (for workers)
+- Working directory - Appropriate worktree or factory path
 
 ### Claude Code Profile
 
 Each role has a profile that loads its CLAUDE.md:
-- `claude --profile witness`
-- `claude --profile refinery`
-- `claude --profile polecat`
-- `claude --profile mayor`
+- `claude --profile supervisor`
+- `claude --profile qa`
+- `claude --profile worker`
+- `claude --profile ceo`
 
 ---
 
@@ -359,62 +359,62 @@ Each role has a profile that loads its CLAUDE.md:
 ### Where Verification Happens
 
 ```
-Polecat completes work
+Worker completes work
         │
         ▼
-    Witness
+    Supervisor
         │
         ▼
-    Refinery ────────────────────────────────────────┐
-        │                                            │
-        ▼                                            ▼
-    Run Tests                               Run VerMAS Inspector
-        │                                            │
-        │                                            ▼
-        │                                   ┌─────────────────┐
-        │                                   │    Designer     │
-        │                                   │  (elaborate)    │
-        │                                   └────────┬────────┘
-        │                                            │
-        │                                   ┌────────▼────────┐
-        │                                   │   Strategist    │
-        │                                   │  (plan tests)   │
-        │                                   └────────┬────────┘
-        │                                            │
-        │                                   ┌────────▼────────┐
-        │                                   │    Verifier     │
-        │                                   │ (run shell/no LLM)│
-        │                                   └────────┬────────┘
-        │                                            │
-        │                                   ┌────────▼────────┐
-        │                                   │    Auditor      │
-        │                                   │ (LLM if needed) │
-        │                                   └────────┬────────┘
-        │                                            │
-        │                                   ┌────────▼────────┐
-        │                                   │   Adversarial   │
-        │                                   │ Advocate/Critic │
-        │                                   │     Judge       │
-        │                                   └────────┬────────┘
-        │                                            │
-        ▼                                            ▼
-    All pass? ◄──────────────────────────── Verdict: PASS/FAIL
+    QA Department ──────────────────────────────────────┐
+        │                                               │
+        ▼                                               ▼
+    Run Tests                              Run VerMAS Verification
+        │                                               │
+        │                                               ▼
+        │                                      ┌─────────────────┐
+        │                                      │    Designer     │
+        │                                      │  (elaborate)    │
+        │                                      └────────┬────────┘
+        │                                               │
+        │                                      ┌────────▼────────┐
+        │                                      │   Strategist    │
+        │                                      │  (plan tests)   │
+        │                                      └────────┬────────┘
+        │                                               │
+        │                                      ┌────────▼────────┐
+        │                                      │    Verifier     │
+        │                                      │ (run shell/no LLM)│
+        │                                      └────────┬────────┘
+        │                                               │
+        │                                      ┌────────▼────────┐
+        │                                      │    Auditor      │
+        │                                      │ (LLM if needed) │
+        │                                      └────────┬────────┘
+        │                                               │
+        │                                      ┌────────▼────────┐
+        │                                      │   Adversarial   │
+        │                                      │ Advocate/Critic │
+        │                                      │     Judge       │
+        │                                      └────────┬────────┘
+        │                                               │
+        ▼                                               ▼
+    All pass? ◄─────────────────────────────── Verdict: PASS/FAIL
         │
         ├── Yes → Merge
         └── No  → REWORK_REQUEST
 ```
 
-### Inspector as Separate Sessions
+### QA Pipeline Sessions
 
-Each Inspector role can run as its own tmux session:
-- `inspector-designer-{rig}`
-- `inspector-strategist-{rig}`
-- `inspector-verifier-{rig}` (no LLM - just runs shell)
-- `inspector-advocate-{rig}`
-- `inspector-critic-{rig}`
-- `inspector-judge-{rig}`
+Each QA role can run as its own tmux session:
+- `qa-designer-{factory}`
+- `qa-strategist-{factory}`
+- `qa-verifier-{factory}` (no LLM - just runs shell)
+- `qa-advocate-{factory}`
+- `qa-critic-{factory}`
+- `qa-judge-{factory}`
 
-Or as a single orchestrated workflow within Refinery.
+Or as a single orchestrated workflow within QA Department.
 
 ---
 
@@ -425,26 +425,26 @@ Or as a single orchestrated workflow within Refinery.
 | Log Type | Location | Contents |
 |----------|----------|----------|
 | **Session logs** | `logs/{session}/` | Full Claude Code output |
-| **Mail archive** | `.beads/messages.jsonl` | All agent communication |
-| **Bead history** | `.beads/issues.jsonl` | Work state changes |
-| **Molecule traces** | `.beads/mols/*.json` | Workflow step execution |
-| **Verification evidence** | `.beads/evidence/` | Test outputs, verdicts |
+| **Mail archive** | `.work/messages.jsonl` | All agent communication |
+| **Work order history** | `.work/work_orders.jsonl` | Work state changes |
+| **Process traces** | `.work/processes/*.json` | Workflow step execution |
+| **Verification evidence** | `.work/evidence/` | Test outputs, verdicts |
 
 ### Log Levels
 
 1. **Trace** - Every Claude Code interaction (large, debugging only)
 2. **Debug** - Step-by-step workflow execution
-3. **Info** - Major state changes (bead status, merges)
+3. **Info** - Major state changes (work order status, merges)
 4. **Warn** - Nudges, retries, recoverable issues
 5. **Error** - Failures, escalations, stuck agents
 
 ### Structured Logging Fields
 
 - `timestamp` - When it happened
-- `actor` - BD_ACTOR of the agent
-- `event` - What happened (bead_created, mail_sent, step_completed)
-- `bead_id` - Related bead if any
-- `mol_id` - Related molecule if any
+- `actor` - AGENT_ID of the agent
+- `event` - What happened (work_order_created, mail_sent, step_completed)
+- `work_order_id` - Related work order if any
+- `process_id` - Related process if any
 - `details` - Event-specific data
 
 ---
@@ -455,18 +455,18 @@ Or as a single orchestrated workflow within Refinery.
 
 | Failure | Detection | Recovery |
 |---------|-----------|----------|
-| Polecat stuck | Witness patrol (idle >15min) | Kill session, release slot |
-| Witness down | Deacon patrol | Restart Witness |
-| Refinery down | Deacon patrol | Restart Refinery |
-| Deacon down | Boot process | Restart Deacon |
+| Worker stuck | Supervisor patrol (idle >15min) | Kill session, release slot |
+| Supervisor down | Operations patrol | Restart Supervisor |
+| QA down | Operations patrol | Restart QA |
+| Operations down | Boot process | Restart Operations |
 
 ### Work Recovery
 
 | Scenario | State | Recovery |
 |----------|-------|----------|
-| Polecat killed mid-work | Sandbox has uncommitted changes | New polecat can resume from worktree |
-| Session crash | Hook file persists | New session reads hook, continues |
-| Merge failed | Bead still open | REWORK_REQUEST sent, work continues |
+| Worker killed mid-work | Worktree has uncommitted changes | New worker can resume from worktree |
+| Session crash | Assignment file persists | New session reads assignment, continues |
+| Merge failed | Work order still open | REWORK_REQUEST sent, work continues |
 
 ### Watchdog Chain
 
@@ -477,13 +477,13 @@ OS (systemd/launchd)
      Boot
         │
         ▼
-    Deacon ──────────────────┬──────────────────┐
-        │                    │                  │
-        ▼                    ▼                  ▼
-   Witness(A)           Witness(B)         Witness(C)
-        │                    │                  │
-        ▼                    ▼                  ▼
-   Polecats              Polecats           Polecats
+  Operations ──────────────────┬──────────────────┐
+        │                      │                  │
+        ▼                      ▼                  ▼
+ Supervisor(A)          Supervisor(B)      Supervisor(C)
+        │                      │                  │
+        ▼                      ▼                  ▼
+    Workers                Workers             Workers
 ```
 
 ---
@@ -504,14 +504,14 @@ OS (systemd/launchd)
 3. **Interoperable** - Go and Python read same files
 4. **Debuggable** - Human-readable, greppable
 
-### Why Hooks?
+### Why Assignments?
 
-1. **Stateless startup** - Agent reads hook, knows what to do
-2. **Crash recovery** - Hook persists, work doesn't get lost
+1. **Stateless startup** - Agent reads assignment, knows what to do
+2. **Crash recovery** - Assignment persists, work doesn't get lost
 3. **Explicit assignment** - No ambiguity about who does what
-4. **GUPP enforcement** - Work on hook = immediate execution
+4. **Principle enforcement** - Assignment = immediate execution
 
-### Why Molecules?
+### Why Processes?
 
 1. **Reusable workflows** - Define once, instantiate many
 2. **Step tracking** - Know exactly where work stopped
@@ -526,7 +526,7 @@ OS (systemd/launchd)
 
 VerMAS runs on a single machine or trusted cluster. The threat model assumes:
 - **Trusted agents** - All LLM agents are under your control
-- **Trusted filesystem** - No malicious writes to `.beads/`
+- **Trusted filesystem** - No malicious writes to `.work/`
 - **Network isolation** - Agents don't expose network services
 
 ### Security Boundaries
@@ -539,7 +539,7 @@ VerMAS runs on a single machine or trusted cluster. The threat model assumes:
 │   TRUSTED ZONE (your machine)                                               │
 │   ┌───────────────────────────────────────────────────────────────────────┐ │
 │   │                                                                       │ │
-│   │   Agents (tmux)     Beads (files)      Git (worktrees)               │ │
+│   │   Agents (tmux)     Work Orders (files)   Git (worktrees)            │ │
 │   │        │                 │                    │                       │ │
 │   │        └─────────────────┼────────────────────┘                       │ │
 │   │                          │                                            │ │
@@ -563,26 +563,26 @@ VerMAS runs on a single machine or trusted cluster. The threat model assumes:
 
 **File Permissions:**
 ```bash
-# Beads should be readable/writable by your user only
-chmod 700 .beads
-chmod 600 .beads/*.jsonl
+# Work directory should be readable/writable by your user only
+chmod 700 .work
+chmod 600 .work/*.jsonl
 ```
 
 **Secrets Management:**
-- Never store API keys in beads or git
+- Never store API keys in work orders or git
 - Use environment variables or secure vaults
 - LLM CLIs handle their own auth
 
 **Git Security:**
 ```bash
 # Add to .gitignore
-.beads/.hook-*      # Hook files (local state)
-.beads/feed.jsonl   # Real-time feed (local)
-logs/               # Session logs (may contain sensitive output)
+.work/.assignment-*     # Assignment files (local state)
+.work/feed.jsonl        # Real-time feed (local)
+logs/                   # Session logs (may contain sensitive output)
 ```
 
 **Agent Isolation:**
-- Each polecat runs in isolated worktree
+- Each worker runs in isolated worktree
 - Agents can't access each other's worktrees directly
 - All communication through mail (auditable)
 
@@ -602,12 +602,12 @@ Agents run with your user permissions. They CAN:
 Agents are LIMITED by:
 - Worktree isolation (can't see other worktrees)
 - CLAUDE.md instructions (behavioral constraints)
-- Hook-based work assignment (explicit scope)
+- Assignment-based work (explicit scope)
 
 ### Verification as Security
 
 The VerMAS verification pipeline provides security benefits:
-- Code review before merge (Inspector roles)
+- Code review before merge (QA roles)
 - Automated testing (Verifier)
 - Adversarial review (Advocate/Critic)
 - Audit trail of all decisions
@@ -620,25 +620,25 @@ The VerMAS verification pipeline provides security benefits:
 
 | Dimension | Typical Range | Bottleneck |
 |-----------|---------------|------------|
-| **Agents per rig** | 5-10 polecats | Tmux sessions, disk I/O |
-| **Rigs per town** | 3-10 | Memory, coordination overhead |
+| **Agents per factory** | 5-10 workers | Tmux sessions, disk I/O |
+| **Factories per company** | 3-10 | Memory, coordination overhead |
 | **Total agents** | 20-50 | LLM rate limits, human oversight |
-| **Beads per rig** | 1000s | JSONL scan time |
+| **Work orders per factory** | 1000s | JSONL scan time |
 
 ### Performance Characteristics
 
 **Fast Operations (< 100ms):**
-- Hook check (`gt hook`)
-- Mail send (`gt mail send`)
+- Assignment check (`co assignment`)
+- Mail send (`co send`)
 - Event emit (append to JSONL)
 
 **Medium Operations (100ms - 1s):**
-- Bead lookup by ID (`bd show`)
-- List beads with filter (`bd list`)
-- Sync status check (`bd sync --status`)
+- Work order lookup by ID (`wo show`)
+- List work orders with filter (`wo list`)
+- Sync status check (`wo sync --status`)
 
 **Slow Operations (> 1s):**
-- Full beads sync (`bd sync`)
+- Full work orders sync (`wo sync`)
 - Worktree creation (`git worktree add`)
 - LLM agent spawn (Claude startup)
 
@@ -646,7 +646,7 @@ The VerMAS verification pipeline provides security benefits:
 
 **Event Log Partitioning:**
 ```
-.beads/
+.work/
 ├── events.jsonl           # Current day
 └── events/
     ├── 2026-01-06.jsonl   # Archived by day
@@ -655,16 +655,16 @@ The VerMAS verification pipeline provides security benefits:
 
 **Index Files (optional):**
 ```python
-# For large bead counts, maintain index
-# .beads/index/by-status.json
+# For large work order counts, maintain index
+# .work/index/by-status.json
 {
-  "open": ["gt-abc", "gt-def", ...],
-  "closed": ["gt-xyz", ...]
+  "open": ["wo-abc", "wo-def", ...],
+  "closed": ["wo-xyz", ...]
 }
 ```
 
 **Projection Caching:**
-- `issues.jsonl` is a projection, not source of truth
+- `work_orders.jsonl` is a projection, not source of truth
 - Can be regenerated from events
 - Cache for fast reads, events for writes
 
@@ -674,13 +674,13 @@ The VerMAS verification pipeline provides security benefits:
 
 **10-30 agents:**
 - Partition events by day
-- Use separate rigs for independent projects
+- Use separate factories for independent projects
 - Monitor disk I/O
 
 **30+ agents:**
 - Consider multiple machines
 - Implement event archival
-- Add monitoring (Deacon metrics)
+- Add monitoring (Operations metrics)
 
 ### Resource Usage
 
@@ -688,7 +688,7 @@ The VerMAS verification pipeline provides security benefits:
 |-----------|--------|------|-----|
 | Tmux session | ~5MB | - | Idle |
 | Claude Code | ~200MB | - | Varies |
-| Beads sync | ~50MB | ~1MB/1000 beads | Low |
+| Work order sync | ~50MB | ~1MB/1000 WOs | Low |
 | Event tail | ~10MB | Append only | Low |
 
 ---
@@ -701,9 +701,9 @@ The VerMAS verification pipeline provides security benefits:
 - [OPERATIONS.md](./OPERATIONS.md) - Deployment and maintenance
 - [AGENTS.md](./AGENTS.md) - Agent roles and responsibilities
 - [HOOKS.md](./HOOKS.md) - Claude Code integration and git worktrees
-- [WORKFLOWS.md](./WORKFLOWS.md) - Molecule state machine
+- [WORKFLOWS.md](./WORKFLOWS.md) - Process state machine
 - [MESSAGING.md](./MESSAGING.md) - Communication patterns
 - [EVENTS.md](./EVENTS.md) - Event sourcing and change feeds
 - [SCHEMAS.md](./SCHEMAS.md) - Data specifications
-- [VERIFICATION.md](./VERIFICATION.md) - VerMAS Inspector pipeline
+- [VERIFICATION.md](./VERIFICATION.md) - VerMAS QA pipeline
 - [EVALUATION.md](./EVALUATION.md) - How to evaluate the system

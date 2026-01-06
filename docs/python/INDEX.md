@@ -10,6 +10,39 @@
 
 ---
 
+## The Company Metaphor
+
+VerMAS uses a **Company with Factories** model:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              THE COMPANY                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   HEADQUARTERS                                                              │
+│   ─────────────                                                             │
+│   CEO             Strategic leader, coordinates across factories            │
+│   Operations      Infrastructure, keeps systems running                     │
+│   Board           Human oversight, escalations                              │
+│                                                                             │
+│   FACTORY (per repository/project)                                          │
+│   ─────────────────────────────────                                         │
+│   Supervisor      Monitors workers, handles issues                          │
+│   QA Department   Quality control, merge queue, verification                │
+│   Workers         Ephemeral task executors (spawn → work → done)            │
+│   Teams           Human-directed workspaces                                 │
+│                                                                             │
+│   WORK MANAGEMENT                                                           │
+│   ───────────────                                                           │
+│   Work Orders     Tasks, bugs, features (stored in JSONL)                   │
+│   Assignments     Work assigned to a worker                                 │
+│   Processes       Workflow templates and instances                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Documentation Map
 
 ```
@@ -27,23 +60,23 @@
 │   ────────────────────────────────────────────────────────                  │
 │   EVENTS.md           Event sourcing (JSONL append-only logs)               │
 │   HOOKS.md            Claude Code integration, git worktrees                │
-│   CLI.md              Unix-style CLI tools (gt, bd)                         │
+│   CLI.md              Unix-style CLI tools                                  │
 │   SCHEMAS.md          JSONL/TOML data specifications                        │
 │                                                                             │
-│   AGENT SYSTEM                                                              │
+│   ORGANIZATION                                                              │
 │   ────────────────────────────────────────────────────────                  │
-│   AGENTS.md           Agent roles (Mayor, Witness, Polecat, etc.)           │
-│   MESSAGING.md        Mail protocol between agents                          │
-│   WORKFLOWS.md        Molecule state machine (MEOW)                         │
+│   AGENTS.md           Roles (CEO, Supervisor, Worker, etc.)                 │
+│   MESSAGING.md        Internal communications                               │
+│   WORKFLOWS.md        Process templates and execution                       │
 │                                                                             │
 │   VERIFICATION                                                              │
 │   ────────────────────────────────────────────────────────                  │
-│   VERIFICATION.md     VerMAS Inspector pipeline                             │
+│   VERIFICATION.md     Quality Assurance pipeline                            │
 │   EVALUATION.md       Metrics, testing, benchmarks                          │
 │                                                                             │
 │   OPERATIONS                                                                │
 │   ────────────────────────────────────────────────────────                  │
-│   OPERATIONS.md       Deployment, startup, monitoring, maintenance          │
+│   OPERATIONS.md       Deployment, startup, monitoring                       │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -101,25 +134,25 @@ All state changes are immutable events. See [EVENTS.md](./EVENTS.md).
 ```
 events.jsonl (source of truth)
      │
-     ├─→ issues.jsonl (projection)
+     ├─→ work_orders.jsonl (projection)
      ├─→ messages.jsonl (projection)
      └─→ feed.jsonl (change feed)
 ```
 
-### GUPP (Propulsion Principle)
+### Assignment Principle
 
-> If your hook has work, RUN IT.
+> If you have an assignment, EXECUTE IT.
 
-Agents check their hook on startup and execute immediately. No confirmation, no questions. See [HOOKS.md](./HOOKS.md).
+Agents check their assignment on startup and execute immediately. No confirmation, no questions. See [HOOKS.md](./HOOKS.md).
 
-### Molecules (MEOW)
+### Processes (Workflows)
 
 Workflow state machine with phases:
-- **Ice-9** (Formula) → **Solid** (Proto) → **Liquid** (Mol) → **Archive**
+- **Template** (TOML) → **Ready** (compiled) → **Active** (running) → **Archive**
 
 See [WORKFLOWS.md](./WORKFLOWS.md).
 
-### Mail Protocol
+### Internal Communications
 
 Async messaging between agents via JSONL mailboxes. See [MESSAGING.md](./MESSAGING.md).
 
@@ -127,7 +160,7 @@ Async messaging between agents via JSONL mailboxes. See [MESSAGING.md](./MESSAGI
 
 ## By Role
 
-### For Mayors
+### For CEOs
 - [HOW_IT_WORKS.md](./HOW_IT_WORKS.md) - Overview
 - [CLI.md](./CLI.md) - Command reference
 - [AGENTS.md](./AGENTS.md) - Role responsibilities
@@ -147,7 +180,7 @@ Async messaging between agents via JSONL mailboxes. See [MESSAGING.md](./MESSAGI
 
 | Document | Description |
 |----------|-------------|
-| [AGENTS.md](./AGENTS.md) | Agent roles and responsibilities |
+| [AGENTS.md](./AGENTS.md) | Roles and responsibilities |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System architecture |
 | [CLI.md](./CLI.md) | Command reference |
 | [EVALUATION.md](./EVALUATION.md) | Metrics and evaluation |
@@ -155,11 +188,11 @@ Async messaging between agents via JSONL mailboxes. See [MESSAGING.md](./MESSAGI
 | [GO-VS-PYTHON.md](./GO-VS-PYTHON.md) | Language comparison |
 | [HOOKS.md](./HOOKS.md) | Claude Code integration |
 | [HOW_IT_WORKS.md](./HOW_IT_WORKS.md) | Quick start guide |
-| [MESSAGING.md](./MESSAGING.md) | Mail protocol |
+| [MESSAGING.md](./MESSAGING.md) | Internal communications |
 | [OPERATIONS.md](./OPERATIONS.md) | Deployment and operations |
 | [SCHEMAS.md](./SCHEMAS.md) | JSONL/TOML data specs |
-| [VERIFICATION.md](./VERIFICATION.md) | VerMAS Inspector pipeline |
-| [WORKFLOWS.md](./WORKFLOWS.md) | Molecule system |
+| [VERIFICATION.md](./VERIFICATION.md) | QA pipeline |
+| [WORKFLOWS.md](./WORKFLOWS.md) | Process system |
 
 **Total: 14 documents**
 
@@ -172,7 +205,7 @@ Async messaging between agents via JSONL mailboxes. See [MESSAGING.md](./MESSAGI
 3. **Event Sourced** - Append-only logs, derived state
 4. **Unix Philosophy** - Small tools, text streams, composable
 5. **Observable** - Attach to any agent, grep any log
-6. **Recoverable** - Hooks persist, worktrees survive crashes
+6. **Recoverable** - Assignments persist, worktrees survive crashes
 
 ---
 
@@ -180,39 +213,30 @@ Async messaging between agents via JSONL mailboxes. See [MESSAGING.md](./MESSAGI
 
 | Term | Definition |
 |------|------------|
-| **Bead** | A work item (issue, task, bug, feature). Stored in `issues.jsonl`. |
-| **BD_ACTOR** | Environment variable identifying an agent (e.g., `gastown/polecats/slot0`). |
-| **Convoy** | A group of related beads traveling together through the system. |
-| **Crew** | Human-directed workspace within a rig. Persistent, not ephemeral. |
-| **Deacon** | Daemon process managing agent lifecycle and system health. |
+| **Assignment** | Work assigned to an agent (stored in `.assignment-{agent}` file). |
+| **CEO** | Company coordinator. Dispatches work, handles escalations. Does NOT write code. |
+| **Company** | The workspace root containing all factories and the CEO. |
 | **Event** | An immutable record of a state change. Stored in `events.jsonl`. |
+| **Factory** | A project/repository container. Has its own workers, supervisor, QA. |
 | **Feed** | Real-time stream of events (`feed.jsonl`). Agents can tail this. |
-| **Formula** | A TOML template defining a workflow (Ice-9 state). |
-| **GUPP** | Gas Town Universal Propulsion Principle: "If your hook has work, RUN IT." |
-| **Hook** | A file (`.hook-{agent}`) containing an agent's assigned work reference. |
-| **Inspector** | Verification agent roles: Designer, Strategist, Verifier, Auditor, Advocate, Critic, Judge. |
 | **JSONL** | JSON Lines format. One JSON object per line, append-only. |
-| **Mayor** | Global coordinator. Dispatches work, handles escalations. Does NOT write code. |
-| **MEOW** | Molecule state machine: Ice-9 → Solid → Liquid → Archive. |
-| **Molecule (Mol)** | A running workflow instance (Liquid state). Tracks step progress. |
-| **Polecat** | Ephemeral worker agent. Spawns, executes one bead, disappears. |
-| **Projection** | Derived state from events (e.g., `issues.jsonl` is a projection of bead events). |
-| **Protomolecule** | A frozen, reusable workflow template (Solid state). |
-| **Refinery** | Per-rig agent that manages merge queues and code review. |
-| **Rig** | A project container. Has its own beads, polecats, witness, refinery. |
-| **Sling** | To assign work to an agent (`gt sling <bead> <rig>`). |
-| **Town** | The workspace root containing all rigs and the Mayor. |
-| **VerMAS** | Verification Multi-Agent System. The Inspector pipeline for code verification. |
-| **Wisp** | An ephemeral workflow instance (Vapor state). No permanent record. |
-| **Witness** | Per-rig agent that monitors polecats. Nudges idle, kills stuck, escalates. |
-| **Worktree** | A git worktree. Each polecat gets its own for isolation. |
-| **Adversarial Review** | Verification pattern: Advocate argues PASS, Critic argues FAIL, Judge decides. |
-| **Change Feed** | Real-time event stream (`feed.jsonl`) for agent coordination. |
+| **Operations** | Daemon process managing agent lifecycle and system health. |
+| **Process** | A running workflow instance. Tracks step progress. |
+| **Projection** | Derived state from events (e.g., `work_orders.jsonl` is a projection). |
+| **QA Department** | Per-factory agent that manages merge queues and verification. |
+| **Slot** | A worker position (slot0-slot4). Limited per factory. |
+| **Sprint** | A group of related work orders traveling together. |
+| **Supervisor** | Per-factory agent that monitors workers. Nudges idle, escalates stuck. |
+| **Team** | Human-directed workspace within a factory. Persistent, not ephemeral. |
+| **Template** | A TOML file defining a workflow. |
+| **VerMAS** | Verification Multi-Agent System. The QA pipeline for code verification. |
+| **Work Order** | A work item (task, bug, feature). Stored in `work_orders.jsonl`. |
+| **Worker** | Ephemeral agent. Spawns, executes one work order, disappears. |
+| **Worktree** | A git worktree. Each worker gets its own for isolation. |
+| **Adversarial Review** | QA pattern: Advocate argues PASS, Critic argues FAIL, Judge decides. |
+| **Change Feed** | Real-time event stream for agent coordination. |
 | **Correlation ID** | Links related events across agents and workflows. |
 | **LLM Backend** | Abstraction allowing Claude, Codex, Aider, or custom CLI tools. |
-| **Slot** | A polecat work position (slot0-slot4). Limited per rig. |
-| **Squash** | Archive a molecule with summary. Creates permanent record. |
-| **Burn** | Discard a molecule without record. |
 
 ---
 
@@ -220,31 +244,31 @@ Async messaging between agents via JSONL mailboxes. See [MESSAGING.md](./MESSAGI
 
 ### Startup Sequence
 ```bash
-gt deacon start          # Start infrastructure
-claude --profile mayor   # Start Mayor session
+co ops start             # Start infrastructure
+claude --profile ceo     # Start CEO session
 ```
 
 ### Daily Workflow
 ```bash
-gt hook                  # Check assigned work
-gt mail inbox            # Check messages
-bd ready                 # Find available work
-gt sling <bead> <rig>    # Dispatch work
-gt convoy list           # Monitor progress
+co assignment            # Check assigned work
+co inbox                 # Check messages
+wo ready                 # Find available work
+co dispatch <wo> <factory>  # Dispatch work
+co sprints               # Monitor progress
 ```
 
 ### Session End
 ```bash
 git add . && git commit -m "..."
-bd sync && git push
-gt handoff -m "..."      # If incomplete
+wo sync && git push
+co handoff -m "..."      # If incomplete
 ```
 
 ### Debugging
 ```bash
-gt status                # Town overview
-gt polecat list          # Active workers
-tail -f .beads/feed.jsonl | jq .  # Event stream
+co status                # Company overview
+co workers               # Active workers
+tail -f .work/feed.jsonl | jq .  # Event stream
 tmux attach -t <session> # Watch agent
 ```
 
@@ -253,8 +277,8 @@ tmux attach -t <session> # Watch agent
 ## Getting Help
 
 ```bash
-gt --help              # Gas Town commands
-bd --help              # Beads commands
-gt <command> --help    # Specific command help
-bd <command> --help
+co --help              # Company commands
+wo --help              # Work Order commands
+co <command> --help    # Specific command help
+wo <command> --help
 ```

@@ -12,7 +12,7 @@ VerMAS uses **event sourcing** as its foundational data pattern. Every state cha
 |                                                                    |
 |   File System          Git              CLI           Agents       |
 |   +-----------+    +-----------+    +-----------+    +-----------+ |
-|   | JSONL     |    | Commits   |    | gt / bd   |    | Claude    | |
+|   | JSONL     |    | Commits   |    | co / wo   |    | Claude    | |
 |   | Append-   |    | Branches  |    | Commands  |    | Code CLI  | |
 |   | Only Logs |    | Worktrees |    | Typer     |    | Profiles  | |
 |   +-----------+    +-----------+    +-----------+    +-----------+ |
@@ -37,46 +37,46 @@ VerMAS uses **event sourcing** as its foundational data pattern. Every state cha
 
 | Event | Description | Emitter |
 |-------|-------------|---------|
-| `bead.created` | New bead/issue created | bd create |
-| `bead.updated` | Bead field changed | bd update |
-| `bead.status_changed` | Status transition | bd update/close |
-| `bead.hooked` | Bead assigned to agent hook | gt sling |
-| `bead.closed` | Bead marked complete | bd close |
+| `work_order.created` | New work order created | wo create |
+| `work_order.updated` | Work order field changed | wo update |
+| `work_order.status_changed` | Status transition | wo update/close |
+| `work_order.assigned` | Work order assigned to agent | co dispatch |
+| `work_order.closed` | Work order marked complete | wo close |
 
 ### Message Events
 
 | Event | Description | Emitter |
 |-------|-------------|---------|
-| `mail.sent` | Message dispatched | gt mail send |
+| `mail.sent` | Message dispatched | co send |
 | `mail.delivered` | Message arrived in inbox | mail router |
-| `mail.read` | Recipient read message | gt mail read |
+| `mail.read` | Recipient read message | co read |
 
 ### Agent Lifecycle Events
 
 | Event | Description | Emitter |
 |-------|-------------|---------|
-| `agent.started` | Agent session began | gt polecat spawn |
-| `agent.hook_checked` | Agent checked its hook | gt hook |
-| `agent.working` | Agent began work on bead | GUPP execution |
-| `agent.idle` | Agent went idle | witness patrol |
-| `agent.nudged` | Agent received nudge | witness |
-| `agent.stopped` | Agent session ended | gt polecat done |
+| `agent.started` | Agent session began | co worker spawn |
+| `agent.assignment_checked` | Agent checked assignment | co assignment |
+| `agent.working` | Agent began work on order | Assignment execution |
+| `agent.idle` | Agent went idle | supervisor patrol |
+| `agent.nudged` | Agent received nudge | supervisor |
+| `agent.stopped` | Agent session ended | co worker done |
 
 ### Workflow Events
 
 | Event | Description | Emitter |
 |-------|-------------|---------|
-| `mol.created` | Molecule instantiated | bd mol pour |
-| `mol.step_started` | Workflow step began | agent |
-| `mol.step_completed` | Workflow step finished | agent |
-| `mol.completed` | All steps done | bd mol squash |
-| `mol.abandoned` | Workflow discarded | bd mol burn |
+| `process.created` | Process instantiated | wo process start |
+| `process.step_started` | Workflow step began | agent |
+| `process.step_completed` | Workflow step finished | agent |
+| `process.completed` | All steps done | wo process complete |
+| `process.cancelled` | Workflow discarded | wo process cancel |
 
 ### Verification Events (VerMAS-specific)
 
 | Event | Description | Emitter |
 |-------|-------------|---------|
-| `verify.started` | Verification began | refinery |
+| `verify.started` | Verification began | qa |
 | `verify.spec_created` | Designer produced spec | designer |
 | `verify.tests_generated` | Strategist created tests | strategist |
 | `verify.test_executed` | Verifier ran a test | verifier |
@@ -94,10 +94,10 @@ Every event shares this schema:
 ```json
 {
   "event_id": "evt-abc123",
-  "event_type": "bead.created",
+  "event_type": "work_order.created",
   "timestamp": "2026-01-06T12:00:00Z",
-  "actor": "gastown/crew/frontend",
-  "correlation_id": "conv-xyz789",
+  "actor": "project-a/teams/frontend",
+  "correlation_id": "sprint-xyz789",
   "data": { ... }
 }
 ```
@@ -107,24 +107,24 @@ Every event shares this schema:
 | `event_id` | string | Unique event identifier |
 | `event_type` | string | Event type (namespaced) |
 | `timestamp` | datetime | When event occurred (ISO 8601) |
-| `actor` | string | BD_ACTOR who triggered event |
-| `correlation_id` | string | Links related events (convoy, molecule) |
+| `actor` | string | AGENT_ID who triggered event |
+| `correlation_id` | string | Links related events (sprint, process) |
 | `data` | object | Event-specific payload |
 
 ### Example Events
 
-**Bead Created:**
+**Work Order Created:**
 ```json
 {
   "event_id": "evt-a1b2c3",
-  "event_type": "bead.created",
+  "event_type": "work_order.created",
   "timestamp": "2026-01-06T10:30:00Z",
-  "actor": "mayor",
+  "actor": "ceo",
   "correlation_id": null,
   "data": {
-    "bead_id": "gt-def456",
+    "work_order_id": "wo-def456",
     "title": "Implement feature X",
-    "issue_type": "feature",
+    "type": "feature",
     "priority": 2
   }
 }
@@ -134,12 +134,12 @@ Every event shares this schema:
 ```json
 {
   "event_id": "evt-d4e5f6",
-  "event_type": "bead.status_changed",
+  "event_type": "work_order.status_changed",
   "timestamp": "2026-01-06T11:00:00Z",
-  "actor": "gastown/polecats/slot0",
-  "correlation_id": "conv-123",
+  "actor": "project-a/workers/slot0",
+  "correlation_id": "sprint-123",
   "data": {
-    "bead_id": "gt-def456",
+    "work_order_id": "wo-def456",
     "from_status": "open",
     "to_status": "in_progress"
   }
@@ -152,13 +152,13 @@ Every event shares this schema:
   "event_id": "evt-g7h8i9",
   "event_type": "agent.started",
   "timestamp": "2026-01-06T10:45:00Z",
-  "actor": "gastown/polecats/slot0",
+  "actor": "project-a/workers/slot0",
   "correlation_id": null,
   "data": {
-    "session_name": "polecat-gastown-slot0",
+    "session_name": "worker-project-a-slot0",
     "worktree": "/path/to/worktree",
-    "profile": "polecat",
-    "hooked_bead": "gt-def456"
+    "profile": "worker",
+    "assigned_work_order": "wo-def456"
   }
 }
 ```
@@ -169,10 +169,10 @@ Every event shares this schema:
   "event_id": "evt-j1k2l3",
   "event_type": "verify.verdict",
   "timestamp": "2026-01-06T12:15:00Z",
-  "actor": "gastown/inspector/judge",
-  "correlation_id": "mol-verify-abc",
+  "actor": "project-a/qa/judge",
+  "correlation_id": "process-verify-abc",
   "data": {
-    "bead_id": "gt-def456",
+    "work_order_id": "wo-def456",
     "verdict": "PASS",
     "criteria_passed": 5,
     "criteria_failed": 0,
@@ -188,7 +188,7 @@ Every event shares this schema:
 ### File Layout
 
 ```
-.beads/
+.work/
 ├── events.jsonl           # Main event log (append-only)
 ├── events/
 │   ├── 2026-01-06.jsonl   # Daily partitioned logs
@@ -206,13 +206,13 @@ Events stored as newline-delimited JSON (JSONL):
 
 ```bash
 # View recent events
-tail -20 .beads/events.jsonl | jq .
+tail -20 .work/events.jsonl | jq .
 
 # Filter by event type
-grep '"event_type":"bead.created"' .beads/events.jsonl
+grep '"event_type":"work_order.created"' .work/events.jsonl
 
 # Count events by type
-cat .beads/events.jsonl | jq -r '.event_type' | sort | uniq -c
+cat .work/events.jsonl | jq -r '.event_type' | sort | uniq -c
 ```
 
 ---
@@ -221,22 +221,22 @@ cat .beads/events.jsonl | jq -r '.event_type' | sort | uniq -c
 
 ### State Reconstruction
 
-Current bead state = replay all events for that bead:
+Current work order state = replay all events for that order:
 
 ```python
-def get_bead_state(bead_id: str) -> Bead:
-    events = load_events(filter={"data.bead_id": bead_id})
+def get_work_order_state(wo_id: str) -> WorkOrder:
+    events = load_events(filter={"data.work_order_id": wo_id})
     state = {}
 
     for event in events:
-        if event.event_type == "bead.created":
+        if event.event_type == "work_order.created":
             state = event.data
-        elif event.event_type == "bead.updated":
+        elif event.event_type == "work_order.updated":
             state.update(event.data.get("changes", {}))
-        elif event.event_type == "bead.status_changed":
+        elif event.event_type == "work_order.status_changed":
             state["status"] = event.data["to_status"]
 
-    return Bead(**state)
+    return WorkOrder(**state)
 ```
 
 ### Projection (Materialized Views)
@@ -244,21 +244,21 @@ def get_bead_state(bead_id: str) -> Bead:
 For performance, maintain materialized views:
 
 ```
-events.jsonl  →  project  →  issues.jsonl (current state)
+events.jsonl  →  project  →  work_orders.jsonl (current state)
                           →  messages.jsonl (mailboxes)
                           →  metrics.jsonl (aggregates)
 ```
 
-**The `issues.jsonl` file is a projection of bead events**, not the source of truth. It's an optimization for fast reads.
+**The `work_orders.jsonl` file is a projection of work order events**, not the source of truth. It's an optimization for fast reads.
 
 ### Temporal Queries
 
 Event sourcing enables "time travel":
 
 ```python
-def get_bead_state_at(bead_id: str, timestamp: datetime) -> Bead:
+def get_work_order_state_at(wo_id: str, timestamp: datetime) -> WorkOrder:
     events = load_events(
-        filter={"data.bead_id": bead_id},
+        filter={"data.work_order_id": wo_id},
         before=timestamp
     )
     return replay_events(events)
@@ -275,28 +275,28 @@ Agents can subscribe to the change feed:
 ```
 ┌─────────────┐       ┌─────────────┐       ┌─────────────┐
 │   Producer  │──────▶│  feed.jsonl │──────▶│  Consumers  │
-│  (bd, gt)   │       │  (append)   │       │  (agents)   │
+│  (co, wo)   │       │  (append)   │       │  (agents)   │
 └─────────────┘       └─────────────┘       └─────────────┘
 ```
 
 **Producer** (CLI commands) appends to `feed.jsonl`
-**Consumers** (Witness, Refinery) tail the feed
+**Consumers** (Supervisor, QA) tail the feed
 
 ### Implementation
 
 ```python
 # Producer: emit event
 def emit_event(event: Event):
-    with open(".beads/events.jsonl", "a") as f:
+    with open(".work/events.jsonl", "a") as f:
         f.write(event.model_dump_json() + "\n")
 
     # Also append to real-time feed
-    with open(".beads/feed.jsonl", "a") as f:
+    with open(".work/feed.jsonl", "a") as f:
         f.write(event.model_dump_json() + "\n")
 
 # Consumer: watch feed
 async def watch_feed():
-    with open(".beads/feed.jsonl", "r") as f:
+    with open(".work/feed.jsonl", "r") as f:
         f.seek(0, 2)  # Go to end
         while True:
             line = f.readline()
@@ -322,8 +322,8 @@ The feed file acts as a simple pub/sub mechanism:
 ### Correlation ID
 
 Links events that belong together:
-- All events in a convoy share `correlation_id`
-- All events in a molecule execution share `correlation_id`
+- All events in a sprint share `correlation_id`
+- All events in a process execution share `correlation_id`
 - Enables tracing work across agents
 
 ### Causation Chain
@@ -339,7 +339,7 @@ For detailed tracing, events can include `caused_by`:
 }
 ```
 
-This creates an audit trail: `bead.created` → `bead.hooked` → `agent.started` → `agent.working` → ...
+This creates an audit trail: `work_order.created` → `work_order.assigned` → `agent.started` → `agent.working` → ...
 
 ---
 
@@ -347,74 +347,74 @@ This creates an audit trail: `bead.created` → `bead.hooked` → `agent.started
 
 ```bash
 # List recent events
-bd events list                    # Last 50 events
-bd events list --type=bead.*      # Filter by type
-bd events list --actor=mayor      # Filter by actor
+wo events list                    # Last 50 events
+wo events list --type=work_order.*  # Filter by type
+wo events list --actor=ceo        # Filter by actor
 
 # Tail events (real-time)
-bd events tail                    # Watch feed.jsonl
+wo events tail                    # Watch feed.jsonl
 
-# Replay events for a bead
-bd events replay <bead-id>        # Show event history
+# Replay events for a work order
+wo events replay <wo-id>          # Show event history
 
 # Event statistics
-bd events stats                   # Counts by type
-bd events stats --since=1d        # Last 24 hours
+wo events stats                   # Counts by type
+wo events stats --since=1d        # Last 24 hours
 
 # Export events
-bd events export --since=2026-01-01 > events-january.jsonl
+wo events export --since=2026-01-01 > events-january.jsonl
 ```
 
 ---
 
 ## Integration with Agents
 
-### Hooks as Events
+### Assignments as Events
 
-When a hook is set, emit `bead.hooked`:
+When an assignment is set, emit `work_order.assigned`:
 
 ```python
-def set_hook(agent: str, bead_id: str):
-    # Write hook file
-    hook_path = Path(f".beads/.hook-{agent}")
-    hook_path.write_text(f"bead:{bead_id}")
+def set_assignment(agent: str, wo_id: str):
+    # Write assignment file
+    assignment_path = Path(f".work/.assignment-{agent}")
+    assignment_path.write_text(f"work_order:{wo_id}")
 
     # Emit event
     emit_event(Event(
-        event_type="bead.hooked",
+        event_type="work_order.assigned",
         actor="system",
         data={
-            "bead_id": bead_id,
+            "work_order_id": wo_id,
             "agent": agent,
-            "hook_path": str(hook_path)
+            "assignment_path": str(assignment_path)
         }
     ))
 ```
 
-### GUPP Compliance Events
+### Assignment Principle Compliance Events
 
-Track propulsion principle compliance:
+Track assignment principle compliance:
 
 ```json
 {
-  "event_type": "agent.gupp_check",
+  "event_type": "agent.assignment_checked",
   "data": {
-    "agent": "gastown/polecats/slot0",
-    "hook_found": true,
+    "agent": "project-a/workers/slot0",
+    "assignment_found": true,
     "response_ms": 150,
     "action": "execute_immediately"
   }
 }
 ```
 
-### Witness Patrol Events
+### Supervisor Patrol Events
 
 ```json
 {
   "event_type": "patrol.completed",
-  "actor": "gastown/witness",
+  "actor": "project-a/supervisor",
   "data": {
-    "polecats_checked": 3,
+    "workers_checked": 3,
     "idle_found": 1,
     "nudges_sent": 1,
     "kills_executed": 0
@@ -430,14 +430,14 @@ Events enable precise metrics:
 
 ```python
 # Completion rate
-completed = count_events(type="bead.status_changed", to="closed")
-total = count_events(type="bead.created")
+completed = count_events(type="work_order.status_changed", to="closed")
+total = count_events(type="work_order.created")
 rate = completed / total
 
-# GUPP compliance
-gupp_events = get_events(type="agent.gupp_check")
-fast_responses = [e for e in gupp_events if e.data["response_ms"] < 30000]
-compliance = len(fast_responses) / len(gupp_events)
+# Assignment principle compliance
+assignment_events = get_events(type="agent.assignment_checked")
+fast_responses = [e for e in assignment_events if e.data["response_ms"] < 30000]
+compliance = len(fast_responses) / len(assignment_events)
 
 # Verification accuracy
 verdicts = get_events(type="verify.verdict")
@@ -486,4 +486,4 @@ Event sourcing is used by:
 - [MESSAGING.md](./MESSAGING.md) - Mail protocol
 - [SCHEMAS.md](./SCHEMAS.md) - Event data specifications
 - [EVALUATION.md](./EVALUATION.md) - Metrics from events
-- [WORKFLOWS.md](./WORKFLOWS.md) - Molecule lifecycle
+- [WORKFLOWS.md](./WORKFLOWS.md) - Process lifecycle

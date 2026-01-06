@@ -1,6 +1,6 @@
 # VerMAS Messaging
 
-> Communication patterns, mail protocol, and hooks
+> Communication patterns, mail protocol, and assignments
 
 ## Communication Overview
 
@@ -13,25 +13,25 @@
 │   │                            MAIL                                     │  │
 │   │                                                                     │  │
 │   │   Async messages between agents                                     │  │
-│   │   Stored in .beads/messages.jsonl                                   │  │
+│   │   Stored in .work/messages.jsonl                                    │  │
 │   │   Supports: notifications, requests, handoffs                       │  │
 │   │                                                                     │  │
 │   └─────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
 │   ┌─────────────────────────────────────────────────────────────────────┐  │
-│   │                           HOOKS                                     │  │
+│   │                       ASSIGNMENTS                                   │  │
 │   │                                                                     │  │
 │   │   Work assignment mechanism                                         │  │
-│   │   Stored in .beads/.hook-{agent}                                    │  │
-│   │   Agent checks on startup, executes immediately (GUPP)              │  │
+│   │   Stored in .work/.assignment-{agent}                               │  │
+│   │   Agent checks on startup, executes immediately                     │  │
 │   │                                                                     │  │
 │   └─────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
 │   ┌─────────────────────────────────────────────────────────────────────┐  │
-│   │                          BEADS                                      │  │
+│   │                      WORK ORDERS                                    │  │
 │   │                                                                     │  │
 │   │   Shared work state                                                 │  │
-│   │   Stored in .beads/issues.jsonl                                     │  │
+│   │   Stored in .work/work_orders.jsonl                                 │  │
 │   │   All agents can read; owners can update                           │  │
 │   │                                                                     │  │
 │   └─────────────────────────────────────────────────────────────────────┘  │
@@ -47,27 +47,27 @@
 
 | Type | From | To | Purpose |
 |------|------|----|---------|
-| `POLECAT_DONE` | Polecat | Witness | Work completed |
-| `MERGE_READY` | Witness | Refinery | Ready for merge |
-| `MERGED` | Refinery | Author | Successfully merged |
-| `REWORK_REQUEST` | Refinery | Author | Changes needed |
-| `NUDGE` | Witness | Polecat | Wake up idle worker |
-| `WITNESS_PING` | Deacon | Witness | Health check |
-| `HELP` | Any | Witness/Mayor | Request assistance |
+| `WORKER_DONE` | Worker | Supervisor | Work completed |
+| `READY_FOR_QA` | Supervisor | QA | Ready for merge |
+| `MERGED` | QA | Author | Successfully merged |
+| `REWORK_REQUEST` | QA | Author | Changes needed |
+| `NUDGE` | Supervisor | Worker | Wake up idle worker |
+| `SUPERVISOR_PING` | Operations | Supervisor | Health check |
+| `HELP` | Any | Supervisor/CEO | Request assistance |
 | `HANDOFF` | Any | Self/Next | Session continuity |
-| `ESCALATION` | Any | Deacon/Mayor | Problem report |
+| `ESCALATION` | Any | Operations/CEO | Problem report |
 
 ### Message Flow Diagrams
 
 **Happy Path: Work Completion**
 
 ```
-Polecat                 Witness                 Refinery
+Worker                 Supervisor               QA
    │                       │                       │
-   │ POLECAT_DONE          │                       │
+   │ WORKER_DONE           │                       │
    │──────────────────────▶│                       │
    │                       │                       │
-   │                       │ MERGE_READY           │
+   │                       │ READY_FOR_QA          │
    │                       │──────────────────────▶│
    │                       │                       │
    │                       │                       │ (run tests, verify)
@@ -80,12 +80,12 @@ Polecat                 Witness                 Refinery
 **Failure Path: Rework Required**
 
 ```
-Polecat                 Witness                 Refinery
+Worker                 Supervisor               QA
    │                       │                       │
-   │ POLECAT_DONE          │                       │
+   │ WORKER_DONE           │                       │
    │──────────────────────▶│                       │
    │                       │                       │
-   │                       │ MERGE_READY           │
+   │                       │ READY_FOR_QA          │
    │                       │──────────────────────▶│
    │                       │                       │
    │                       │                       │ (tests fail)
@@ -97,10 +97,10 @@ Polecat                 Witness                 Refinery
    │                       │                       │
 ```
 
-**Escalation Path: Stuck Polecat**
+**Escalation Path: Stuck Worker**
 
 ```
-Polecat                 Witness                 Deacon                 Mayor
+Worker                 Supervisor             Operations               CEO
    │                       │                       │                      │
    │ (idle >5min)          │                       │                      │
    │                       │                       │                      │
@@ -109,7 +109,7 @@ Polecat                 Witness                 Deacon                 Mayor
    │                       │                       │                      │
    │ (still idle >15min)   │                       │                      │
    │                       │                       │                      │
-   │ (killed by Witness)   │                       │                      │
+   │ (killed by Supervisor)│                       │                      │
    │                       │                       │                      │
    │                       │ ESCALATION (if >30min)│                      │
    │                       │──────────────────────▶│                      │
@@ -128,8 +128,8 @@ Polecat                 Witness                 Deacon                 Mayor
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | string | Unique message ID |
-| `from` | string | Sender BD_ACTOR |
-| `to` | string | Recipient BD_ACTOR |
+| `from` | string | Sender AGENT_ID |
+| `to` | string | Recipient AGENT_ID |
 | `subject` | string | Message subject |
 | `body` | string | Message content |
 | `timestamp` | datetime | When sent |
@@ -138,7 +138,7 @@ Polecat                 Witness                 Deacon                 Mayor
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `type` | enum | Message type (POLECAT_DONE, etc.) |
+| `type` | enum | Message type (WORKER_DONE, etc.) |
 | `priority` | enum | urgent/normal/low |
 | `read_at` | datetime | When recipient read it |
 | `metadata` | object | Additional context |
@@ -146,93 +146,93 @@ Polecat                 Witness                 Deacon                 Mayor
 ### Addressing
 
 ```
-{rig}/{role}/{name}    # Full address
-{rig}/{role}           # Role address (any agent in role)
-{role}                 # Town-level role
+{factory}/{role}/{name}    # Full address
+{factory}/{role}           # Role address (any agent in role)
+{role}                     # Company-level role
 ```
 
 **Examples:**
-- `gastown/polecats/slot0` - Specific polecat
-- `gastown/witness` - Witness for gastown rig
-- `mayor` - Town-level Mayor
-- `deacon` - Town-level Deacon
+- `project-a/workers/slot0` - Specific worker
+- `project-a/supervisor` - Supervisor for project-a factory
+- `ceo` - Company-level CEO
+- `operations` - Company-level Operations
 
 ---
 
-## Hook System
+## Assignment System
 
-### What is a Hook?
+### What is an Assignment?
 
-A hook is where work "hangs" waiting for an agent. It's the assignment mechanism.
+An assignment is where work "waits" for an agent. It's the work assignment mechanism.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              HOOK MECHANISM                                  │
+│                          ASSIGNMENT MECHANISM                                │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│   Mayor/Human                                                               │
+│   CEO/Human                                                                 │
 │       │                                                                     │
-│       │ gt sling bead-123 gastown                                          │
+│       │ co dispatch wo-123 project-a                                       │
 │       │                                                                     │
 │       ▼                                                                     │
 │   ┌─────────────────────────────────────────────────────────────────────┐  │
 │   │                                                                     │  │
-│   │   .beads/.hook-gastown-polecats-slot0                              │  │
-│   │   ─────────────────────────────────────                            │  │
-│   │   bead:bead-123                                                    │  │
+│   │   .work/.assignment-project-a-workers-slot0                        │  │
+│   │   ─────────────────────────────────────────                        │  │
+│   │   work_order:wo-123                                                │  │
 │   │                                                                     │  │
 │   └─────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
-│   Polecat starts                                                            │
+│   Worker starts                                                             │
 │       │                                                                     │
-│       │ gt hook (check)                                                    │
-│       │                                                                     │
-│       ▼                                                                     │
-│   "HOOKED: bead-123"                                                        │
-│       │                                                                     │
-│       │ GUPP: Execute immediately!                                         │
+│       │ co assignment (check)                                              │
 │       │                                                                     │
 │       ▼                                                                     │
-│   (start working on bead-123)                                              │
+│   "ASSIGNED: wo-123"                                                        │
+│       │                                                                     │
+│       │ Assignment Principle: Execute immediately!                         │
+│       │                                                                     │
+│       ▼                                                                     │
+│   (start working on wo-123)                                                │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Hook File Format
+### Assignment File Format
 
 Simple text file: `{type}:{id}`
 
 ```
-bead:gt-abc12       # Bead hooked
-mail:msg-xyz99      # Mail message hooked (for handoffs)
-mol:mol-123abc      # Molecule hooked
+work_order:wo-abc12     # Work order assigned
+mail:msg-xyz99          # Mail message assigned (for handoffs)
+process:proc-123abc     # Process assigned
 ```
 
-### Hook Types
+### Assignment Types
 
 | Type | Use Case |
 |------|----------|
-| `bead` | Normal work assignment |
+| `work_order` | Normal work assignment |
 | `mail` | Handoff instructions |
-| `mol` | Workflow continuation |
+| `process` | Workflow continuation |
 
-### GUPP (Propulsion Principle)
+### Assignment Principle
 
-> **If your hook has work, RUN IT.**
+> **If you have an assignment, EXECUTE IT.**
 
 ```
 Agent starts
     │
     ▼
-Check hook
+Check assignment
     │
-    ├── Hook has work ──────▶ EXECUTE IMMEDIATELY
-    │                        No confirmation
-    │                        No questions
-    │                        No waiting
+    ├── Assignment has work ──────▶ EXECUTE IMMEDIATELY
+    │                               No confirmation
+    │                               No questions
+    │                               No waiting
     │
-    └── Hook empty ──────────▶ Check mail
-                              Then await instructions
+    └── Assignment empty ──────────▶ Check mail
+                                     Then await instructions
 ```
 
 ---
@@ -244,8 +244,8 @@ For session continuity across restarts.
 ### Creating a Handoff
 
 ```
-gt mail send mayor -s "🤝 HANDOFF: Context for next session" -m "Details..."
-gt hook attach {mail-id}
+co send ceo -s "🤝 HANDOFF: Context for next session" -m "Details..."
+co assignment attach {mail-id}
 ```
 
 ### Receiving a Handoff
@@ -254,7 +254,7 @@ gt hook attach {mail-id}
 Agent starts
     │
     ▼
-Check hook
+Check assignment
     │
     ▼
 Find mail:msg-123
@@ -290,7 +290,7 @@ The 🤝 emoji indicates this is a handoff message for session continuity.
 
 1. Urgent messages processed before checking regular queue
 2. Within same priority, process oldest first
-3. GUPP overrides priority (hooked work runs first)
+3. Assignment Principle overrides priority (assigned work runs first)
 
 ---
 
@@ -303,8 +303,8 @@ A: Request
 B: Response
 
 Example:
-Witness sends NUDGE
-Polecat resumes or sends HELP
+Supervisor sends NUDGE
+Worker resumes or sends HELP
 ```
 
 ### Notification (Fire-and-Forget)
@@ -314,8 +314,8 @@ A: Notification
 (no response expected)
 
 Example:
-Polecat sends POLECAT_DONE
-Witness processes, Polecat doesn't wait
+Worker sends WORKER_DONE
+Supervisor processes, Worker doesn't wait
 ```
 
 ### Cascade
@@ -324,7 +324,7 @@ Witness processes, Polecat doesn't wait
 A → B → C
 
 Example:
-POLECAT_DONE → MERGE_READY → MERGED
+WORKER_DONE → READY_FOR_QA → MERGED
 ```
 
 ### Broadcast (not implemented)
@@ -351,21 +351,21 @@ All mail operations emit events to the event log. See [EVENTS.md](./EVENTS.md) f
 | `mail.read` | Recipient opened message | message_id, reader, read_at |
 | `mail.archived` | Message moved to archive | message_id |
 
-### Hook Events
+### Assignment Events
 
 | Event Type | When Emitted | Data |
 |------------|--------------|------|
-| `hook.set` | Work assigned to hook | agent, ref_type, ref_id |
-| `hook.cleared` | Hook emptied | agent, previous_ref |
-| `hook.checked` | Agent checked hook (GUPP) | agent, found, response_ms |
+| `assignment.set` | Work assigned | agent, ref_type, ref_id |
+| `assignment.cleared` | Assignment emptied | agent, previous_ref |
+| `assignment.checked` | Agent checked assignment | agent, found, response_ms |
 
 ### Example Event Stream
 
 ```
-mail.sent       → {from: "polecat", to: "witness", msg: "POLECAT_DONE"}
-mail.delivered  → {to: "witness", msg_id: "..."}
-mail.read       → {reader: "witness", msg_id: "..."}
-mail.sent       → {from: "witness", to: "refinery", msg: "MERGE_READY"}
+mail.sent       → {from: "worker", to: "supervisor", msg: "WORKER_DONE"}
+mail.delivered  → {to: "supervisor", msg_id: "..."}
+mail.read       → {reader: "supervisor", msg_id: "..."}
+mail.sent       → {from: "supervisor", to: "qa", msg: "READY_FOR_QA"}
 ```
 
 This enables precise timing analysis and debugging of communication flows.
@@ -376,7 +376,7 @@ This enables precise timing analysis and debugging of communication flows.
 
 ### Message Archive
 
-All messages stored in `.beads/messages.jsonl`:
+All messages stored in `.work/messages.jsonl`:
 - Full message content
 - Sender and recipient
 - Timestamps
@@ -427,7 +427,7 @@ If message file corrupted:
 | Scenario | Recovery |
 |----------|----------|
 | Message lost | Re-send or check logs |
-| Hook lost | Re-sling the work |
+| Assignment lost | Re-dispatch the work |
 | Mail stuck | Clear and retry |
 
 ---
@@ -436,23 +436,23 @@ If message file corrupted:
 
 ### Message Content
 
-1. **Be specific** - Include bead IDs, slot names
+1. **Be specific** - Include work order IDs, slot names
 2. **Include context** - What led to this message
 3. **Action oriented** - What should recipient do
 4. **Structured** - Easy to parse programmatically
 
-### Hook Usage
+### Assignment Usage
 
-1. **One hook per agent** - Single assignment at a time
-2. **Clear when done** - Don't leave stale hooks
-3. **Check on startup** - GUPP compliance
+1. **One assignment per agent** - Single work item at a time
+2. **Clear when done** - Don't leave stale assignments
+3. **Check on startup** - Assignment Principle compliance
 4. **Persist through crashes** - File-based, survives restart
 
 ### Handoffs
 
 1. **Use emoji** - 🤝 HANDOFF in subject
 2. **Be thorough** - Include all context
-3. **Hook it** - So next session finds it
+3. **Assign it** - So next session finds it
 4. **Time-bound** - Don't leave handoffs indefinitely
 
 ---
@@ -462,7 +462,7 @@ If message file corrupted:
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture
 - [AGENTS.md](./AGENTS.md) - Agent roles
 - [HOOKS.md](./HOOKS.md) - Claude Code integration and git worktrees
-- [WORKFLOWS.md](./WORKFLOWS.md) - Molecule system
+- [WORKFLOWS.md](./WORKFLOWS.md) - Process system
 - [EVENTS.md](./EVENTS.md) - Event sourcing and change feeds
 - [SCHEMAS.md](./SCHEMAS.md) - Message data specifications
 - [CLI.md](./CLI.md) - Mail command reference

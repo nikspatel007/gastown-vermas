@@ -4,7 +4,7 @@
 
 ## Overview
 
-VerMAS (Verification Multi-Agent System) adds structured verification to Gas Town. When code is ready to merge, the Refinery triggers a verification pipeline that uses multiple LLM agents to evaluate whether the work meets requirements.
+VerMAS (Verification Multi-Agent System) adds structured verification to the work pipeline. When code is ready to merge, the QA Department triggers a verification pipeline that uses multiple LLM agents to evaluate whether the work meets requirements.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -91,13 +91,13 @@ Single LLM can have blind spots. Adversarial structure:
 
 ---
 
-## Inspector Roles
+## Verification Roles
 
 ### Designer
 
 **Purpose:** Transform raw requirements into detailed specifications.
 
-**Input:** Bead description, user story, or feature request
+**Input:** Work order description, user story, or feature request
 **Output:** Structured specification with acceptance criteria
 
 **Example prompt:**
@@ -437,12 +437,12 @@ FINAL VERDICT: FAIL
 
 ## Running Verification
 
-### As Part of Refinery
+### As Part of QA
 
-Verification runs automatically when Refinery receives MERGE_READY:
+Verification runs automatically when QA receives READY_FOR_QA:
 
 ```
-MERGE_READY received
+READY_FOR_QA received
         │
         ▼
     Tests pass?
@@ -469,17 +469,17 @@ MERGE_READY received
 ### Standalone Verification
 
 ```bash
-# Verify a specific bead
-vermas verify gt-abc123
+# Verify a specific work order
+vermas verify wo-abc123
 
 # Verify with verbose output
-vermas verify gt-abc123 --verbose
+vermas verify wo-abc123 --verbose
 
 # Run only objective tests (skip Advocate/Critic/Judge)
-vermas verify gt-abc123 --objective-only
+vermas verify wo-abc123 --objective-only
 
 # Generate verification report
-vermas verify gt-abc123 --output=report.json
+vermas verify wo-abc123 --output=report.json
 ```
 
 ---
@@ -489,17 +489,17 @@ vermas verify gt-abc123 --output=report.json
 ### Enabling VerMAS
 
 ```bash
-# Per-rig
-touch <rig>/.beads/.vermas-enabled
+# Per-factory
+touch <factory>/.work/.vermas-enabled
 
 # Configure strictness
-echo "objective_only = true" > <rig>/.beads/vermas.toml
+echo "objective_only = true" > <factory>/.work/vermas.toml
 ```
 
 ### Verification TOML
 
 ```toml
-# .beads/vermas.toml
+# .work/vermas.toml
 
 [verification]
 enabled = true
@@ -524,11 +524,11 @@ judge_model = "claude-opus"     # Most capable for final decision
 
 ## Evidence Storage
 
-Verification produces evidence stored in `.beads/evidence/`:
+Verification produces evidence stored in `.work/evidence/`:
 
 ```
-.beads/evidence/
-├── gt-abc123/
+.work/evidence/
+├── wo-abc123/
 │   ├── spec.json           # Designer output
 │   ├── tests.json          # Strategist output
 │   ├── results.json        # Verifier output
@@ -544,7 +544,7 @@ Verification produces evidence stored in `.beads/evidence/`:
 
 ```json
 {
-  "bead_id": "gt-abc123",
+  "work_order_id": "wo-abc123",
   "timestamp": "2026-01-06T12:00:00.000Z",
   "verdict": "PASS",
   "criteria": [
@@ -578,7 +578,7 @@ See [EVENTS.md](./EVENTS.md) for full event schema.
 
 | Event | When | Data |
 |-------|------|------|
-| `verify.started` | Pipeline begins | bead_id, mol_id |
+| `verify.started` | Pipeline begins | work_order_id, process_id |
 | `verify.spec_created` | Designer done | spec summary |
 | `verify.tests_generated` | Strategist done | test count |
 | `verify.test_executed` | Each test runs | criterion, passed |
@@ -590,8 +590,8 @@ See [EVENTS.md](./EVENTS.md) for full event schema.
 ## See Also
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture
-- [AGENTS.md](./AGENTS.md) - Inspector role definitions
-- [WORKFLOWS.md](./WORKFLOWS.md) - Verification molecule
+- [AGENTS.md](./AGENTS.md) - Verification role definitions
+- [WORKFLOWS.md](./WORKFLOWS.md) - Verification process
 - [EVENTS.md](./EVENTS.md) - Verification events
 - [SCHEMAS.md](./SCHEMAS.md) - Evidence data specifications
 - [EVALUATION.md](./EVALUATION.md) - Verification accuracy metrics

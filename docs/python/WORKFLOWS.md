@@ -1,52 +1,49 @@
 # VerMAS Workflows
 
-> Molecule state machine and workflow patterns
+> Process state machine and workflow patterns
 
-## Molecule System (MEOW)
+## Process System
 
-MEOW = Molecule states for workflow management
+Processes are workflow instances that track multi-step work execution.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          MOLECULE STATE MACHINE                              │
+│                          PROCESS STATE MACHINE                               │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │                         ┌─────────────┐                                     │
-│                         │   ICE-9     │                                     │
-│                         │  (Formula)  │                                     │
+│                         │  TEMPLATE   │                                     │
 │                         │             │                                     │
 │                         │ .toml file  │                                     │
-│                         │ Template    │                                     │
+│                         │ Definition  │                                     │
 │                         └──────┬──────┘                                     │
 │                                │                                            │
-│                                │ cook                                       │
+│                                │ compile                                    │
 │                                ▼                                            │
 │                         ┌─────────────┐                                     │
-│                         │   SOLID     │                                     │
-│                         │  (Proto)    │                                     │
+│                         │   READY     │                                     │
 │                         │             │                                     │
 │                         │ Compiled    │                                     │
-│                         │ Ready       │                                     │
+│                         │ In memory   │                                     │
 │                         └──────┬──────┘                                     │
 │                                │                                            │
-│                 ┌──────────────┼──────────────┐                             │
-│                 │ pour                        │ wisp                        │
+│                                │ start                                      │
+│                                ▼                                            │
+│                         ┌─────────────┐                                     │
+│                         │   ACTIVE    │                                     │
+│                         │             │                                     │
+│                         │ Persistent  │                                     │
+│                         │ Tracked     │                                     │
+│                         └──────┬──────┘                                     │
+│                                │                                            │
+│                 ┌──────────────┴──────────────┐                             │
+│                 │ complete                    │ cancel                      │
 │                 ▼                             ▼                              │
 │          ┌─────────────┐              ┌─────────────┐                       │
-│          │   LIQUID    │              │   VAPOR     │                       │
-│          │   (Mol)     │              │   (Wisp)    │                       │
+│          │  ARCHIVE    │              │  DISCARDED  │                       │
 │          │             │              │             │                       │
-│          │ Persistent  │              │ Ephemeral   │                       │
-│          │ Tracked     │              │ Auto-expire │                       │
-│          └──────┬──────┘              └──────┬──────┘                       │
-│                 │                            │                              │
-│      ┌──────────┴──────────┐                 │                              │
-│      │ squash              │ burn            │ (evaporate)                  │
-│      ▼                     ▼                 ▼                              │
-│ ┌─────────┐          ┌─────────┐       ┌─────────┐                         │
-│ │ ARCHIVE │          │ DISCARD │       │  GONE   │                         │
-│ │ Record  │          │ No trace│       │         │                         │
-│ └─────────┘          └─────────┘       └─────────┘                         │
+│          │ Record kept │              │ No trace   │                       │
+│          └─────────────┘              └─────────────┘                       │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -57,11 +54,10 @@ MEOW = Molecule states for workflow management
 
 | State | Name | Storage | Persistence | Use Case |
 |-------|------|---------|-------------|----------|
-| **Ice-9** | Formula | `.beads/formulas/*.toml` | Permanent | Template definitions |
-| **Solid** | Protomolecule | In memory | Session | Compiled, ready to use |
-| **Liquid** | Molecule | `.beads/mols/*.json` | Persistent | Active work tracking |
-| **Vapor** | Wisp | In memory | Ephemeral | Patrol loops, temp tasks |
-| **Archive** | Record | `.beads/mols/*.archive.json` | Permanent | Completed workflows |
+| **Template** | Definition | `.work/templates/*.toml` | Permanent | Workflow definitions |
+| **Ready** | Compiled | In memory | Session | Compiled, ready to use |
+| **Active** | Process | `.work/processes/*.json` | Persistent | Active work tracking |
+| **Archive** | Record | `.work/processes/*.archive.json` | Permanent | Completed workflows |
 
 ---
 
@@ -69,31 +65,30 @@ MEOW = Molecule states for workflow management
 
 | Operator | From | To | Description |
 |----------|------|----|-------------|
-| **cook** | Ice-9 | Solid | Compile formula into protomolecule |
-| **pour** | Solid | Liquid | Create persistent workflow attached to bead |
-| **wisp** | Solid | Vapor | Create ephemeral workflow (auto-expires) |
-| **squash** | Liquid/Vapor | Archive | Complete with summary, create record |
-| **burn** | Liquid/Vapor | (gone) | Discard without record |
+| **compile** | Template | Ready | Compile template into executable form |
+| **start** | Ready | Active | Create persistent workflow attached to work order |
+| **complete** | Active | Archive | Complete with summary, create record |
+| **cancel** | Active | (gone) | Discard without record |
 
 ---
 
-## Formula Structure (TOML)
+## Template Structure (TOML)
 
-Formulas are workflow templates in TOML format:
+Templates are workflow definitions in TOML format:
 
 ```
-.beads/formulas/
-├── mol-witness-patrol.formula.toml
-├── mol-refinery-merge.formula.toml
-├── mol-polecat-work.formula.toml
-└── mol-inspector-verify.formula.toml
+.work/templates/
+├── supervisor-patrol.toml
+├── qa-merge.toml
+├── worker-execute.toml
+└── verify-pipeline.toml
 ```
 
-### Formula Fields
+### Template Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `formula` | string | Unique identifier |
+| `template` | string | Unique identifier |
 | `description` | string | What this workflow does |
 | `version` | int | Schema version |
 | `steps` | array | Ordered list of steps |
@@ -109,48 +104,48 @@ Formulas are workflow templates in TOML format:
 
 ---
 
-## Example Formulas
+## Example Templates
 
-### Witness Patrol
+### Supervisor Patrol
 
 ```
-formula = "mol-witness-patrol"
-description = "Monitor polecats, nudge idle, escalate stuck"
+template = "supervisor-patrol"
+description = "Monitor workers, nudge idle, escalate stuck"
 version = 1
 
 STEPS:
 1. inbox-check
-   - Check mail for POLECAT_DONE messages
+   - Check mail for WORKER_DONE messages
    - No dependencies
 
 2. survey-workers
-   - List all active polecats
+   - List all active workers
    - Check idle time for each
    - Needs: inbox-check
 
 3. nudge-idle
-   - Send nudge to polecats idle >5min
+   - Send nudge to workers idle >5min
    - Needs: survey-workers
 
 4. escalate-stuck
-   - Kill polecats stuck >15min
-   - Report to Deacon
+   - Kill workers stuck >15min
+   - Report to Operations
    - Needs: nudge-idle
 
 FLOW:
 inbox-check → survey-workers → nudge-idle → escalate-stuck
 ```
 
-### Polecat Work
+### Worker Execute
 
 ```
-formula = "mol-polecat-work"
-description = "Execute assigned bead to completion"
+template = "worker-execute"
+description = "Execute assigned work order to completion"
 version = 1
 
 STEPS:
 1. understand
-   - Read hook and bead details
+   - Read assignment and work order details
    - Plan approach
    - No dependencies
 
@@ -173,10 +168,10 @@ FLOW:
 understand → implement → test → complete
 ```
 
-### Inspector Verification
+### QA Verification
 
 ```
-formula = "mol-inspector-verify"
+template = "verify-pipeline"
 description = "VerMAS verification workflow"
 version = 1
 
@@ -234,7 +229,7 @@ elaborate → strategize → verify → audit ─┤              ├─→ judg
 ### Execution Rules
 
 1. **Ready check:** Step is ready when all `needs` are `completed`
-2. **One at a time:** Only one step `in_progress` at a time (per molecule)
+2. **One at a time:** Only one step `in_progress` at a time (per process)
 3. **No backtrack:** Completed steps don't re-run
 4. **Fail fast:** Failed step blocks downstream steps
 
@@ -250,21 +245,21 @@ for each step:
 
 ---
 
-## Molecule Lifecycle
+## Process Lifecycle
 
-### Creating a Molecule
-
-```
-1. Load formula from .toml file
-2. Compile to protomolecule (cook)
-3. Attach to bead (pour)
-4. Save to .beads/mols/{id}.json
-```
-
-### Executing a Molecule
+### Creating a Process
 
 ```
-1. Load molecule from .json
+1. Load template from .toml file
+2. Compile to ready state (compile)
+3. Attach to work order (start)
+4. Save to .work/processes/{id}.json
+```
+
+### Executing a Process
+
+```
+1. Load process from .json
 2. Find ready steps
 3. For each ready step:
    a. Mark in_progress
@@ -273,40 +268,18 @@ for each step:
 4. Repeat until all done or stuck
 ```
 
-### Completing a Molecule
+### Completing a Process
 
 ```
-Option A - Squash (with record):
+Option A - Complete (with record):
 1. Generate summary
 2. Write to .archive.json
 3. Delete active .json
 
-Option B - Burn (no record):
+Option B - Cancel (no record):
 1. Delete active .json
 2. No archive created
 ```
-
----
-
-## Wisp vs Molecule
-
-| Aspect | Molecule (Liquid) | Wisp (Vapor) |
-|--------|-------------------|--------------|
-| Persistence | Saved to disk | Memory only |
-| Lifetime | Until squash/burn | Until TTL expires |
-| Recovery | Survives crashes | Lost on crash |
-| Use case | Important work | Patrol loops |
-| Tracking | Full audit trail | No record |
-
-**When to use Molecule:**
-- Bead execution
-- Verification workflows
-- Anything that needs audit trail
-
-**When to use Wisp:**
-- Witness patrol loops
-- Deacon health checks
-- Temporary coordination
 
 ---
 
@@ -315,7 +288,7 @@ Option B - Burn (no record):
 Some workflows support parallel steps:
 
 ```
-Inspector Verification:
+QA Verification:
                     ┌─→ advocate ─┐
 ... → audit ───────┤              ├─→ judge
                     └─→ criticize─┘
@@ -383,59 +356,59 @@ Future enhancement.
 
 ## Integration with Agents
 
-### Witness Patrol
+### Supervisor Patrol
 
 ```
-Witness starts
+Supervisor starts
     │
     ▼
-wisp(mol-witness-patrol)
+start(supervisor-patrol)
     │
     ├─→ Execute steps in loop
     │
-    └─→ When complete, wisp again (infinite patrol)
+    └─→ When complete, start again (infinite patrol)
 ```
 
-### Polecat Work
+### Worker Execute
 
 ```
-Polecat spawns with bead
+Worker spawns with work order
     │
     ▼
-pour(mol-polecat-work, bead_id)
+start(worker-execute, wo_id)
     │
     ├─→ Execute steps
     │
-    ├─→ On complete: squash + signal done
+    ├─→ On complete: archive + signal done
     │
-    └─→ On fail: leave for Witness
+    └─→ On fail: leave for Supervisor
 ```
 
-### Refinery Merge
+### QA Merge
 
 ```
-Refinery receives MERGE_READY
+QA receives READY_FOR_QA
     │
     ▼
-pour(mol-inspector-verify, bead_id)  [if VerMAS enabled]
+start(verify-pipeline, wo_id)  [if VerMAS enabled]
     │
     ├─→ Execute verification
     │
-    ├─→ On PASS: merge + squash
+    ├─→ On PASS: merge + archive
     │
-    └─→ On FAIL: REWORK_REQUEST + burn
+    └─→ On FAIL: REWORK_REQUEST + cancel
 ```
 
 ---
 
 ## Debugging Workflows
 
-### Inspecting Active Molecules
+### Inspecting Active Processes
 
-```
-bd mol list              # List all active molecules
-bd mol show {id}         # Show molecule details
-bd mol steps {id}        # Show step status
+```bash
+wo process list              # List all active processes
+wo process show {id}         # Show process details
+wo process steps {id}        # Show step status
 ```
 
 ### Common Issues
@@ -445,7 +418,7 @@ bd mol steps {id}        # Show step status
 | Step stuck in `pending` | Dependency not complete | Check dependency status |
 | Step stuck in `in_progress` | Execution hanging | Check agent session |
 | No ready steps | All blocked | Check for circular deps |
-| Molecule not completing | Failed step | Review step output |
+| Process not completing | Failed step | Review step output |
 
 ---
 
@@ -455,21 +428,21 @@ Workflow operations emit events to the event log. See [EVENTS.md](./EVENTS.md).
 
 | Event Type | When | Data |
 |------------|------|------|
-| `mol.created` | Molecule poured | formula, bead_id, mol_id |
-| `mol.step_started` | Step begins | mol_id, step_id |
-| `mol.step_completed` | Step finishes | mol_id, step_id, status |
-| `mol.completed` | All steps done | mol_id, summary |
-| `mol.abandoned` | Workflow discarded | mol_id, reason |
+| `process.created` | Process started | template, wo_id, process_id |
+| `process.step_started` | Step begins | process_id, step_id |
+| `process.step_completed` | Step finishes | process_id, step_id, status |
+| `process.completed` | All steps done | process_id, summary |
+| `process.cancelled` | Workflow discarded | process_id, reason |
 
 ### Tracking Workflow Progress
 
 ```python
-# Get all events for a molecule
-mol_events = get_events(filter={"correlation_id": mol_id})
+# Get all events for a process
+process_events = get_events(filter={"correlation_id": process_id})
 
 # Compute step durations from events
-for step_start in get_events(type="mol.step_started"):
-    step_end = get_event(type="mol.step_completed",
+for step_start in get_events(type="process.step_started"):
+    step_end = get_event(type="process.step_completed",
                          filter={"step_id": step_start.data["step_id"]})
     duration = step_end.timestamp - step_start.timestamp
 ```
@@ -483,6 +456,6 @@ for step_start in get_events(type="mol.step_started"):
 - [HOOKS.md](./HOOKS.md) - Claude Code integration and git worktrees
 - [MESSAGING.md](./MESSAGING.md) - Communication patterns
 - [EVENTS.md](./EVENTS.md) - Event sourcing and change feeds
-- [SCHEMAS.md](./SCHEMAS.md) - Formula and molecule data specs
-- [VERIFICATION.md](./VERIFICATION.md) - VerMAS Inspector workflow
+- [SCHEMAS.md](./SCHEMAS.md) - Template and process data specs
+- [VERIFICATION.md](./VERIFICATION.md) - VerMAS QA workflow
 - [EVALUATION.md](./EVALUATION.md) - How to evaluate the system
