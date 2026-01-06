@@ -449,9 +449,40 @@ bd mol steps {id}        # Show step status
 
 ---
 
+## Events Emitted
+
+Workflow operations emit events to the event log. See [EVENTS.md](./EVENTS.md).
+
+| Event Type | When | Data |
+|------------|------|------|
+| `mol.created` | Molecule poured | formula, bead_id, mol_id |
+| `mol.step_started` | Step begins | mol_id, step_id |
+| `mol.step_completed` | Step finishes | mol_id, step_id, status |
+| `mol.completed` | All steps done | mol_id, summary |
+| `mol.abandoned` | Workflow discarded | mol_id, reason |
+
+### Tracking Workflow Progress
+
+```python
+# Get all events for a molecule
+mol_events = get_events(filter={"correlation_id": mol_id})
+
+# Compute step durations from events
+for step_start in get_events(type="mol.step_started"):
+    step_end = get_event(type="mol.step_completed",
+                         filter={"step_id": step_start.data["step_id"]})
+    duration = step_end.timestamp - step_start.timestamp
+```
+
+---
+
 ## See Also
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture
 - [AGENTS.md](./AGENTS.md) - Agent roles
+- [HOOKS.md](./HOOKS.md) - Claude Code integration and git worktrees
 - [MESSAGING.md](./MESSAGING.md) - Communication patterns
+- [EVENTS.md](./EVENTS.md) - Event sourcing and change feeds
+- [SCHEMAS.md](./SCHEMAS.md) - Formula and molecule data specs
+- [VERIFICATION.md](./VERIFICATION.md) - VerMAS Inspector workflow
 - [EVALUATION.md](./EVALUATION.md) - How to evaluate the system

@@ -338,6 +338,40 @@ Future enhancement.
 
 ---
 
+## Events Emitted
+
+All mail operations emit events to the event log. See [EVENTS.md](./EVENTS.md) for full event sourcing documentation.
+
+### Mail Events
+
+| Event Type | When Emitted | Data |
+|------------|--------------|------|
+| `mail.sent` | Message dispatched | from, to, subject, message_id |
+| `mail.delivered` | Message written to inbox | message_id, recipient |
+| `mail.read` | Recipient opened message | message_id, reader, read_at |
+| `mail.archived` | Message moved to archive | message_id |
+
+### Hook Events
+
+| Event Type | When Emitted | Data |
+|------------|--------------|------|
+| `hook.set` | Work assigned to hook | agent, ref_type, ref_id |
+| `hook.cleared` | Hook emptied | agent, previous_ref |
+| `hook.checked` | Agent checked hook (GUPP) | agent, found, response_ms |
+
+### Example Event Stream
+
+```
+mail.sent       → {from: "polecat", to: "witness", msg: "POLECAT_DONE"}
+mail.delivered  → {to: "witness", msg_id: "..."}
+mail.read       → {reader: "witness", msg_id: "..."}
+mail.sent       → {from: "witness", to: "refinery", msg: "MERGE_READY"}
+```
+
+This enables precise timing analysis and debugging of communication flows.
+
+---
+
 ## Logging and Audit
 
 ### Message Archive
@@ -348,6 +382,8 @@ All messages stored in `.beads/messages.jsonl`:
 - Timestamps
 - Read status
 
+**Note:** `messages.jsonl` is a projection of `mail.*` events. The event log is the source of truth.
+
 ### Audit Trail
 
 Can reconstruct:
@@ -355,6 +391,11 @@ Can reconstruct:
 - Who sent them
 - When they were read
 - Full communication history
+
+Event-based audit provides:
+- Precise timing (millisecond accuracy)
+- Causation chains (which event caused which)
+- Correlation IDs (link messages to workflows)
 
 ### Privacy Considerations
 
@@ -420,5 +461,9 @@ If message file corrupted:
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture
 - [AGENTS.md](./AGENTS.md) - Agent roles
+- [HOOKS.md](./HOOKS.md) - Claude Code integration and git worktrees
 - [WORKFLOWS.md](./WORKFLOWS.md) - Molecule system
+- [EVENTS.md](./EVENTS.md) - Event sourcing and change feeds
+- [SCHEMAS.md](./SCHEMAS.md) - Message data specifications
+- [CLI.md](./CLI.md) - Mail command reference
 - [EVALUATION.md](./EVALUATION.md) - How to evaluate the system

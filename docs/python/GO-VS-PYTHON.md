@@ -283,3 +283,219 @@ Start with **Python** because:
 - Both can coexist via shared beads
 
 The choice is about **developer ergonomics**, not architecture. Both implementations do the same thing the same way.
+
+---
+
+## Additional Python Implementation Patterns
+
+### Event Emission
+
+```python
+from pydantic import BaseModel
+from datetime import datetime
+from pathlib import Path
+import json
+
+class Event(BaseModel):
+    event_id: str
+    event_type: str
+    timestamp: datetime
+    actor: str
+    correlation_id: str | None = None
+    data: dict
+
+def emit_event(event: Event, beads_path: Path = Path(".beads")):
+    """Append event to both event log and feed."""
+    event_line = event.model_dump_json() + "\n"
+
+    # Append to main event log (source of truth)
+    with open(beads_path / "events.jsonl", "a") as f:
+        f.write(event_line)
+
+    # Append to real-time feed (for watchers)
+    with open(beads_path / "feed.jsonl", "a") as f:
+        f.write(event_line)
+```
+
+### Change Feed Watcher
+
+```python
+import asyncio
+from pathlib import Path
+
+async def watch_feed(beads_path: Path = Path(".beads")):
+    """Async generator that yields events as they arrive."""
+    feed_path = beads_path / "feed.jsonl"
+
+    with open(feed_path, "r") as f:
+        # Start at end of file
+        f.seek(0, 2)
+
+        while True:
+            line = f.readline()
+            if line:
+                event = Event.model_validate_json(line.strip())
+                yield event
+            else:
+                await asyncio.sleep(0.1)
+
+# Usage
+async def main():
+    async for event in watch_feed():
+        if event.event_type == "bead.status_changed":
+            print(f"Bead {event.data['bead_id']} → {event.data['to_status']}")
+```
+
+### Hook Management
+
+```python
+from pathlib import Path
+from dataclasses import dataclass
+
+@dataclass
+class HookContent:
+    ref_type: str  # bead, mail, mol
+    ref_id: str
+
+class Hook:
+    def __init__(self, agent: str, beads_path: Path):
+        self.agent = agent
+        self.path = beads_path / f".hook-{agent.replace('/', '-')}"
+
+    def check(self) -> HookContent | None:
+        """Check if hook has content."""
+        if not self.path.exists():
+            return None
+        content = self.path.read_text().strip()
+        if not content:
+            return None
+        ref_type, ref_id = content.split(":", 1)
+        return HookContent(ref_type, ref_id)
+
+    def set(self, ref_type: str, ref_id: str):
+        """Set hook content."""
+        self.path.write_text(f"{ref_type}:{ref_id}")
+
+    def clear(self):
+        """Clear hook."""
+        if self.path.exists():
+            self.path.unlink()
+```
+
+### JSONL Store
+
+```python
+from pathlib import Path
+from typing import TypeVar, Type, Iterator
+from pydantic import BaseModel
+import json
+
+T = TypeVar('T', bound=BaseModel)
+
+class JSONLStore:
+    """Generic JSONL file store."""
+
+    def __init__(self, path: Path, model: Type[T]):
+        self.path = path
+        self.model = model
+
+    def append(self, item: T):
+        """Append item to store."""
+        with open(self.path, "a") as f:
+            f.write(item.model_dump_json() + "\n")
+
+    def iter_all(self) -> Iterator[T]:
+        """Iterate all items."""
+        if not self.path.exists():
+            return
+        with open(self.path, "r") as f:
+            for line in f:
+                if line.strip():
+                    yield self.model.model_validate_json(line)
+
+    def find(self, **filters) -> T | None:
+        """Find first item matching filters."""
+        for item in self.iter_all():
+            if all(getattr(item, k) == v for k, v in filters.items()):
+                return item
+        return None
+
+    def filter(self, **filters) -> list[T]:
+        """Get all items matching filters."""
+        return [
+            item for item in self.iter_all()
+            if all(getattr(item, k) == v for k, v in filters.items())
+        ]
+```
+
+### Tmux Session Manager
+
+```python
+import libtmux
+from dataclasses import dataclass
+
+@dataclass
+class AgentSession:
+    name: str
+    role: str
+    rig: str
+    worktree: str
+    profile: str
+
+class TmuxManager:
+    def __init__(self):
+        self.server = libtmux.Server()
+
+    def spawn_polecat(self, rig: str, slot: int, bead_id: str) -> AgentSession:
+        """Spawn a new polecat session."""
+        name = f"polecat-{rig}-slot{slot}"
+        worktree = f"{rig}/polecats/slot{slot}"
+
+        session = self.server.new_session(
+            session_name=name,
+            start_directory=worktree,
+            attach=False,
+            environment={
+                "BD_ACTOR": f"{rig}/polecats/slot{slot}",
+                "BEAD_ID": bead_id,
+                "GT_RIG": rig,
+                "GT_ROLE": "polecat",
+            }
+        )
+
+        # Start Claude Code with polecat profile
+        session.active_window.active_pane.send_keys("claude --profile polecat")
+
+        return AgentSession(
+            name=name,
+            role="polecat",
+            rig=rig,
+            worktree=worktree,
+            profile="polecat"
+        )
+
+    def list_sessions(self, prefix: str = None) -> list[str]:
+        """List tmux sessions, optionally filtered by prefix."""
+        sessions = self.server.sessions
+        names = [s.name for s in sessions]
+        if prefix:
+            names = [n for n in names if n.startswith(prefix)]
+        return names
+
+    def kill_session(self, name: str):
+        """Kill a session by name."""
+        session = self.server.find_where({"session_name": name})
+        if session:
+            session.kill_session()
+```
+
+---
+
+## See Also
+
+- [INDEX.md](./INDEX.md) - Documentation map
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - System design
+- [CLI.md](./CLI.md) - Command reference
+- [HOOKS.md](./HOOKS.md) - Claude Code integration
+- [EVENTS.md](./EVENTS.md) - Event sourcing
+- [SCHEMAS.md](./SCHEMAS.md) - Data specifications

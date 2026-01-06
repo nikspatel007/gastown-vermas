@@ -511,9 +511,47 @@ Define when to escalate:
 
 ---
 
+## Agent Lifecycle Events
+
+All agent lifecycle transitions emit events. See [EVENTS.md](./EVENTS.md).
+
+| Event Type | When | Data |
+|------------|------|------|
+| `agent.started` | Session begins | agent, session_name, profile |
+| `agent.hook_checked` | Agent checks hook | agent, found, response_ms |
+| `agent.working` | Work begins | agent, bead_id |
+| `agent.idle` | No activity detected | agent, idle_since |
+| `agent.nudged` | Witness sent nudge | agent, witness |
+| `agent.stopped` | Session ends | agent, reason |
+
+### GUPP Compliance Tracking
+
+The `agent.hook_checked` event captures propulsion compliance:
+
+```json
+{
+  "event_type": "agent.hook_checked",
+  "actor": "gastown/polecats/slot0",
+  "data": {
+    "found": true,
+    "response_ms": 150,
+    "action": "execute_immediately"
+  }
+}
+```
+
+Agents with `response_ms > 30000` or `action != "execute_immediately"` violate GUPP.
+
+---
+
 ## See Also
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture
+- [OPERATIONS.md](./OPERATIONS.md) - Deployment and operations
+- [HOOKS.md](./HOOKS.md) - Claude Code integration and git worktrees
 - [WORKFLOWS.md](./WORKFLOWS.md) - Molecule state machine
 - [MESSAGING.md](./MESSAGING.md) - Communication patterns
+- [EVENTS.md](./EVENTS.md) - Event sourcing and change feeds
+- [CLI.md](./CLI.md) - Agent command reference
+- [VERIFICATION.md](./VERIFICATION.md) - VerMAS Inspector pipeline
 - [EVALUATION.md](./EVALUATION.md) - How to evaluate the system

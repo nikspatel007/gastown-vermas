@@ -2,6 +2,28 @@
 
 > How to evaluate if the system is working correctly
 
+## Event-Driven Evaluation
+
+All evaluation in VerMAS is derived from the **event log**. Every metric can be computed by querying `events.jsonl`. See [EVENTS.md](./EVENTS.md) for the event sourcing model.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      EVENT-DRIVEN EVALUATION                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   events.jsonl                                                              │
+│        │                                                                    │
+│        ├─→ Correctness metrics  (completion rates, GUPP compliance)        │
+│        │                                                                    │
+│        ├─→ Reliability metrics  (uptime, recovery times)                   │
+│        │                                                                    │
+│        ├─→ Efficiency metrics   (throughput, latency)                      │
+│        │                                                                    │
+│        └─→ Verification metrics (accuracy, false positive rate)            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
 ## Evaluation Dimensions
 
 ```
@@ -447,9 +469,110 @@ NEXT WEEK
 
 ---
 
+## Computing Metrics from Events
+
+All metrics derive from the event log. Here's how to compute them using the CLI or programmatically.
+
+### CLI Commands
+
+```bash
+# Completion rate from events
+bd eval completion --since=7d
+
+# GUPP compliance
+bd eval gupp --since=1d
+
+# Throughput
+bd eval throughput --since=24h
+
+# Verification accuracy (requires human labels)
+bd eval verify-accuracy --since=30d
+
+# Full evaluation report
+bd eval report --since=7d --output=report.json
+```
+
+### Programmatic Computation
+
+```python
+from vermas.eval import EventMetrics
+from datetime import timedelta
+
+metrics = EventMetrics(".beads/events.jsonl")
+
+# Completion rate
+created = metrics.count("bead.created", since=timedelta(days=7))
+closed = metrics.count("bead.status_changed",
+                       filter={"to_status": "closed"},
+                       since=timedelta(days=7))
+completion_rate = closed / created if created > 0 else 0
+
+# GUPP compliance (response time < 30s)
+gupp_checks = metrics.get_events("hook.checked", since=timedelta(days=1))
+fast_responses = [e for e in gupp_checks if e.data["response_ms"] < 30000]
+gupp_compliance = len(fast_responses) / len(gupp_checks)
+
+# Average time to merge
+def time_to_merge(bead_id: str) -> timedelta:
+    created = metrics.get_event("bead.created", filter={"bead_id": bead_id})
+    merged = metrics.get_event("bead.status_changed",
+                               filter={"bead_id": bead_id, "to_status": "merged"})
+    return merged.timestamp - created.timestamp
+
+# Verification pass rate
+verdicts = metrics.get_events("verify.verdict", since=timedelta(days=7))
+passes = [v for v in verdicts if v.data["verdict"] == "PASS"]
+pass_rate = len(passes) / len(verdicts)
+```
+
+### Event Queries for Each Metric
+
+| Metric | Event Query |
+|--------|-------------|
+| Completion rate | `bead.created` vs `bead.status_changed(to=closed)` |
+| GUPP compliance | `hook.checked` where `response_ms < 30000` |
+| Message delivery | `mail.sent` vs `mail.delivered` |
+| Recovery time | `agent.stopped` to `agent.started` duration |
+| Verification accuracy | `verify.verdict` cross-referenced with human labels |
+| Throughput | `bead.status_changed(to=closed)` per hour |
+| Idle time | `agent.working` to `agent.idle` gaps |
+
+### Continuous Monitoring
+
+Set up a metrics daemon that tails the event feed:
+
+```python
+async def metrics_daemon():
+    """Continuously compute and expose metrics."""
+    metrics = RealTimeMetrics(".beads/feed.jsonl")
+
+    async for event in metrics.watch():
+        # Update running totals
+        if event.event_type == "bead.created":
+            metrics.increment("beads.created")
+        elif event.event_type == "bead.status_changed":
+            if event.data["to_status"] == "closed":
+                metrics.increment("beads.closed")
+
+        # Emit metrics event every minute
+        if metrics.should_snapshot():
+            emit_event(Event(
+                event_type="metrics.snapshot",
+                data=metrics.snapshot()
+            ))
+```
+
+---
+
 ## See Also
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture
+- [OPERATIONS.md](./OPERATIONS.md) - Monitoring and maintenance
 - [AGENTS.md](./AGENTS.md) - Agent roles
+- [HOOKS.md](./HOOKS.md) - Claude Code integration and git worktrees
 - [WORKFLOWS.md](./WORKFLOWS.md) - Molecule system
 - [MESSAGING.md](./MESSAGING.md) - Communication patterns
+- [EVENTS.md](./EVENTS.md) - Event sourcing and change feeds
+- [VERIFICATION.md](./VERIFICATION.md) - VerMAS Inspector pipeline
+- [SCHEMAS.md](./SCHEMAS.md) - Data specifications
+- [CLI.md](./CLI.md) - Evaluation commands
