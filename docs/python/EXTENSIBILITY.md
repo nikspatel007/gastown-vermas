@@ -2,6 +2,117 @@
 
 > Bringing in external expertise through plugins, skills, experts, and templates
 
+---
+
+## Initial Implementation Scope (Approved)
+
+Start with a constrained, safe model. Expand later based on experience.
+
+### Core Principles
+
+1. **Anthropic-approved only**: Plugins must come from Anthropic's curated registry
+2. **Ephemeral by default**: Install for the work, remove when done
+3. **Autonomous at lower scopes**: Worker/Team can self-serve
+4. **Human gates at higher scopes**: Department/Company requires human approval
+
+### Installation Scope Matrix
+
+```
+PLUGIN INSTALLATION AUTHORITY
+
+┌──────────────┬─────────────────┬─────────────────┬─────────────────────────┐
+│ Scope        │ Who Approves    │ Lifetime        │ Source Restriction      │
+├──────────────┼─────────────────┼─────────────────┼─────────────────────────┤
+│ Worker       │ Worker (self)   │ Until work done │ Anthropic registry only │
+│ Team/Factory │ Supervisor      │ Until work done │ Anthropic registry only │
+│ Department   │ Human required  │ Persistent      │ Any approved source     │
+│ Company/Org  │ Human required  │ Persistent      │ Any approved source     │
+└──────────────┴─────────────────┴─────────────────┴─────────────────────────┘
+```
+
+### Ephemeral Plugin Lifecycle
+
+```
+WORK-SCOPED PLUGIN LIFECYCLE
+
+   Work Order Created
+          │
+          ▼
+   ┌─────────────────┐
+   │ Analyze work    │  ← What capabilities needed?
+   │ requirements    │
+   └────────┬────────┘
+            │
+            ▼
+   ┌─────────────────┐
+   │ Search Anthropic│  ← Only approved plugins
+   │ registry        │
+   └────────┬────────┘
+            │
+            ▼
+   ┌─────────────────┐
+   │ Install plugin  │  ← Scoped to worker/team
+   │ (ephemeral)     │
+   └────────┬────────┘
+            │
+            ▼
+   ┌─────────────────┐
+   │ Use plugin      │  ← During work execution
+   │ tools           │
+   └────────┬────────┘
+            │
+            ▼
+   ┌─────────────────┐
+   │ Work completed  │
+   └────────┬────────┘
+            │
+            ▼
+   ┌─────────────────┐
+   │ Uninstall       │  ← Automatic cleanup
+   │ plugin          │
+   └─────────────────┘
+```
+
+### Why This Model
+
+**Trust**: Anthropic-approved plugins are vetted for safety and quality.
+
+**Simplicity**: Workers don't need to evaluate arbitrary extensions.
+
+**Clean state**: Ephemeral installation prevents plugin sprawl.
+
+**Escalation path**: If a plugin is needed frequently, promote to Department/Company level with human approval.
+
+### Example Flow
+
+```
+Worker receives work order: "Add OAuth to user service"
+
+1. Worker analyzes: needs OAuth expertise, security review
+2. Worker searches Anthropic registry: finds "oauth-helper" plugin
+3. Worker installs oauth-helper (worker scope, ephemeral)
+4. Worker uses oauth-helper tools during implementation
+5. Work order completed
+6. oauth-helper automatically uninstalled
+
+Later: Team notices oauth-helper used 10 times this month
+→ Supervisor requests human approval for Team-level persistent install
+→ Human approves
+→ Plugin now available to all team workers without per-work install
+```
+
+---
+
+## Future Expansion (Not Initial Scope)
+
+The iterations below explore the full extensibility model for future implementation:
+- Skills (workflow automation)
+- Experts (specialized agents)
+- Templates (best practice packages)
+- Learning and knowledge promotion
+
+---
+
 ## The Questions
 
 1. **How do we bring in external expertise?** - Consultants, specialists, plugins

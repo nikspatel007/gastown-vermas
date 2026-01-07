@@ -542,6 +542,116 @@ WORK HIERARCHY
 
 ---
 
+## Extensibility Model (Approved - Initial Scope)
+
+Start with a constrained, safe model for plugins. Expand later based on experience.
+
+### Core Principles
+
+1. **Anthropic-approved only**: Plugins must come from Anthropic's curated registry
+2. **Ephemeral by default**: Install for the work, remove when done
+3. **Autonomous at lower scopes**: Worker/Team can self-serve
+4. **Human gates at higher scopes**: Department/Company requires human approval
+
+### Installation Scope Matrix
+
+```
+PLUGIN INSTALLATION AUTHORITY
+
+┌──────────────┬─────────────────┬─────────────────┬─────────────────────────┐
+│ Scope        │ Who Approves    │ Lifetime        │ Source Restriction      │
+├──────────────┼─────────────────┼─────────────────┼─────────────────────────┤
+│ Worker       │ Worker (self)   │ Until work done │ Anthropic registry only │
+│ Team/Factory │ Supervisor      │ Until work done │ Anthropic registry only │
+│ Department   │ Human required  │ Persistent      │ Any approved source     │
+│ Company/Org  │ Human required  │ Persistent      │ Any approved source     │
+└──────────────┴─────────────────┴─────────────────┴─────────────────────────┘
+```
+
+### Ephemeral Plugin Lifecycle
+
+```
+WORK-SCOPED PLUGIN LIFECYCLE
+
+   Work Order Created
+          │
+          ▼
+   ┌─────────────────┐
+   │ Analyze work    │  ← What capabilities needed?
+   │ requirements    │
+   └────────┬────────┘
+            │
+            ▼
+   ┌─────────────────┐
+   │ Search Anthropic│  ← Only approved plugins
+   │ registry        │
+   └────────┬────────┘
+            │
+            ▼
+   ┌─────────────────┐
+   │ Install plugin  │  ← Scoped to worker/team
+   │ (ephemeral)     │
+   └────────┬────────┘
+            │
+            ▼
+   ┌─────────────────┐
+   │ Use plugin      │  ← During work execution
+   │ tools           │
+   └────────┬────────┘
+            │
+            ▼
+   ┌─────────────────┐
+   │ Work completed  │
+   └────────┬────────┘
+            │
+            ▼
+   ┌─────────────────┐
+   │ Uninstall       │  ← Automatic cleanup
+   │ plugin          │
+   └─────────────────┘
+```
+
+### Why This Model
+
+- **Trust**: Anthropic-approved plugins are vetted for safety and quality
+- **Simplicity**: Workers don't need to evaluate arbitrary extensions
+- **Clean state**: Ephemeral installation prevents plugin sprawl
+- **Escalation path**: Frequently-used plugins can be promoted to persistent install with human approval
+
+### Promotion Flow
+
+```
+EPHEMERAL → PERSISTENT PROMOTION
+
+Worker uses plugin 10+ times
+        │
+        ▼
+Supervisor notices pattern
+        │
+        ▼
+Requests human approval for
+Team/Department persistent install
+        │
+        ▼
+Human approves (or rejects)
+        │
+        ▼
+Plugin installed persistently
+(available without per-work install)
+```
+
+### Future Expansion (Not Initial Scope)
+
+These will be designed after initial plugin model is proven:
+- **Skills**: Workflow automation (composite operations)
+- **Experts**: Specialized agent configurations
+- **Templates**: Best practice packages
+- **Learning**: Knowledge promotion across scopes
+
+See [EXTENSIBILITY.md](./EXTENSIBILITY.md) for exploration of these concepts.
+
+---
+
 ## Approval Log
 
 | Date | Section | Status |
@@ -553,3 +663,4 @@ WORK HIERARCHY
 | 2026-01-07 | Cascading Mission/Vision (Company → Dept → Team) | Approved |
 | 2026-01-07 | File Format Convention (MD for prose, YAML for structures) | Approved |
 | 2026-01-07 | Work Hierarchy (Epic → Sprint → Story → Task, complexity-based) | Approved |
+| 2026-01-07 | Extensibility (Initial Scope - Anthropic plugins, ephemeral) | Approved |
